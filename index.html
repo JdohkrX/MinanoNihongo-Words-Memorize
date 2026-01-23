@@ -1,0 +1,1645 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#ffffff">
+    <title>日语背单词 V1.0Beta</title>
+    
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🇯🇵</text></svg>">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/wanakana"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+        
+        html, body {
+            font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #f8fafc;
+            -webkit-user-select: none; user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden !important; 
+            width: 100vw;
+            max-width: 100vw;
+            overscroll-behavior-y: none;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        }
+
+        #root {
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .ruby-font { ruby-position: over; font-size: 2.5rem; line-height: 1.5; }
+        rt { font-size: 0.8rem; color: #64748b; font-weight: 500; }
+        
+        .glass-nav { 
+            background: rgba(255, 255, 255, 0.95); 
+            backdrop-filter: blur(10px); 
+            border-top: 1px solid rgba(0,0,0,0.05);
+            padding-bottom: env(safe-area-inset-bottom);
+            height: calc(64px + env(safe-area-inset-bottom));
+        }
+        
+        .safe-area-top { padding-top: env(safe-area-inset-top); }
+        .list-padding-bottom { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .card-shadow { box-shadow: 0 10px 30px -10px rgba(37, 99, 235, 0.2); }
+        .btn-press:active { transform: scale(0.95); transition: transform 0.1s; }
+        
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        input { 
+            font-size: 16px !important; 
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            border-radius: 1rem; 
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+        // --- 核心词汇数据 ---
+        // ⚠️ 每次更新文件时，请务必在此处覆盖您之前生成的完整单词数组 (FULL_VOCAB)
+        const FULL_VOCAB = [
+    // 第1课 (Lesson 1)
+    { id: 101, lesson: 1, kanji: "私", kana: "わたし", english: "I" },
+    { id: 102, lesson: 1, kanji: "私達", kana: "わたしたち", english: "we" },
+    { id: 103, lesson: 1, kanji: "", kana: "あなた", english: "you" },
+    { id: 104, lesson: 1, kanji: "あの人", kana: "あのひと", english: "that person, he, she" },
+    { id: 105, lesson: 1, kanji: "あの方", kana: "あのかた", english: "that person, he, she (polite)" },
+    { id: 106, lesson: 1, kanji: "皆さん", kana: "みなさん", english: "ladies and gentlemen, all of you" },
+    { id: 107, lesson: 1, kanji: "～さん", kana: "～さん", english: "Mr., Ms. (title of respect)" },
+    { id: 108, lesson: 1, kanji: "～ちゃん", kana: "～ちゃん", english: "(suffix added to a child's name)" },
+    { id: 109, lesson: 1, kanji: "～君", kana: "～くん", english: "(suffix added to a boy's name)" },
+    { id: 110, lesson: 1, kanji: "～人", kana: "～じん", english: "meaning 'a national of'" },
+    { id: 111, lesson: 1, kanji: "先生", kana: "せんせい", english: "teacher, instructor (not used for oneself)" },
+    { id: 112, lesson: 1, kanji: "教師", kana: "きょうし", english: "teacher, instructor" },
+    { id: 113, lesson: 1, kanji: "学生", kana: "がくせい", english: "student" },
+    { id: 114, lesson: 1, kanji: "会社員", kana: "かいしゃいん", english: "company employee" },
+    { id: 115, lesson: 1, kanji: "社員", kana: "しゃいん", english: "employee of ~ Company" },
+    { id: 116, lesson: 1, kanji: "銀行員", kana: "ぎんこういん", english: "bank employee" },
+    { id: 117, lesson: 1, kanji: "医者", kana: "いしゃ", english: "medical doctor" },
+    { id: 118, lesson: 1, kanji: "研究者", kana: "けんきゅうしゃ", english: "researcher, scholar" },
+    { id: 119, lesson: 1, kanji: "", kana: "エンジニア", english: "engineer" },
+    { id: 120, lesson: 1, kanji: "大学", kana: "だいがく", english: "university" },
+    { id: 121, lesson: 1, kanji: "病院", kana: "びょういん", english: "hospital" },
+    { id: 122, lesson: 1, kanji: "電気", kana: "でんき", english: "electricity, light" },
+    { id: 123, lesson: 1, kanji: "誰", kana: "だれ", english: "who" },
+    { id: 124, lesson: 1, kanji: "", kana: "どなた", english: "who (polite)" },
+    { id: 125, lesson: 1, kanji: "～歳", kana: "～さい", english: "—years old" },
+    { id: 126, lesson: 1, kanji: "何歳", kana: "なんさい", english: "how old" },
+    { id: 127, lesson: 1, kanji: "", kana: "おいくつ", english: "how old (polite)" },
+    { id: 128, lesson: 1, kanji: "", kana: "はい", english: "yes" },
+    { id: 129, lesson: 1, kanji: "", kana: "いいえ", english: "no" },
+    { id: 130, lesson: 1, kanji: "失礼ですが", kana: "しつれいですが", english: "Excuse me, but" },
+    { id: 131, lesson: 1, kanji: "お名前は？", kana: "おなまえは？", english: "May I have your name?" },
+    { id: 132, lesson: 1, kanji: "初めまして", kana: "はじめまして", english: "How do you do? (lit. I am meeting you for the first time)" },
+    { id: 133, lesson: 1, kanji: "", kana: "どうぞよろしく[おねがいします]", english: "Pleased to meet you." },
+    { id: 134, lesson: 1, kanji: "", kana: "こちらは～さんです", english: "This is Mr./Ms. ~." },
+    { id: 135, lesson: 1, kanji: "～から来ました", kana: "～からきました", english: "I came (come) from ~." },
+
+    // 第2课 (Lesson 2)
+    { id: 201, lesson: 2, kanji: "", kana: "これ", english: "this (thing here)" },
+    { id: 202, lesson: 2, kanji: "", kana: "それ", english: "that (thing near you)" },
+    { id: 203, lesson: 2, kanji: "", kana: "あれ", english: "that (thing over there)" },
+    { id: 204, lesson: 2, kanji: "", kana: "この～", english: "this ~, this ~ here" },
+    { id: 205, lesson: 2, kanji: "", kana: "その～", english: "that ~, that ~ near you" },
+    { id: 206, lesson: 2, kanji: "", kana: "あの～", english: "that ~, that ~ over there" },
+    { id: 207, lesson: 2, kanji: "本", kana: "ほん", english: "book" },
+    { id: 208, lesson: 2, kanji: "辞書", kana: "じしょ", english: "dictionary" },
+    { id: 209, lesson: 2, kanji: "雑誌", kana: "ざっし", english: "magazine" },
+    { id: 210, lesson: 2, kanji: "新聞", kana: "しんぶん", english: "newspaper" },
+    { id: 211, lesson: 2, kanji: "", kana: "ノート", english: "notebook" },
+    { id: 212, lesson: 2, kanji: "手帳", kana: "てちょう", english: "pocket notebook" },
+    { id: 213, lesson: 2, kanji: "名刺", kana: "めいし", english: "business card" },
+    { id: 214, lesson: 2, kanji: "", kana: "カード", english: "card" },
+    { id: 215, lesson: 2, kanji: "", kana: "テレホンカード", english: "telephone card" },
+    { id: 216, lesson: 2, kanji: "鉛筆", kana: "えんぴつ", english: "pencil" },
+    { id: 217, lesson: 2, kanji: "", kana: "ボールペン", english: "ballpoint pen" },
+    { id: 218, lesson: 2, kanji: "", kana: "シャープペンシル", english: "mechanical pencil, propelling pencil" },
+    { id: 219, lesson: 2, kanji: "鍵", kana: "かぎ", english: "key" },
+    { id: 220, lesson: 2, kanji: "時計", kana: "とけい", english: "watch, clock" },
+    { id: 221, lesson: 2, kanji: "伞", kana: "かさ", english: "umbrella" },
+    { id: 222, lesson: 2, kanji: "鞄", kana: "かばん", english: "bag, briefcase" },
+    { id: 223, lesson: 2, kanji: "", kana: "カセットテープ", english: "cassette tape" },
+    { id: 224, lesson: 2, kanji: "", kana: "テープレコーダー", english: "tape recorder" },
+    { id: 225, lesson: 2, kanji: "", kana: "テレビ", english: "television" },
+    { id: 226, lesson: 2, kanji: "", kana: "ラジオ", english: "radio" },
+    { id: 227, lesson: 2, kanji: "", kana: "カメラ", english: "camera" },
+    { id: 228, lesson: 2, kanji: "", kana: "コンピューター", english: "computer" },
+    { id: 229, lesson: 2, kanji: "自動車", kana: "じどうしゃ", english: "automobile, car" },
+    { id: 230, lesson: 2, kanji: "机", kana: "つくえ", english: "desk" },
+    { id: 231, lesson: 2, kanji: "椅子", kana: "いす", english: "chair" },
+    { id: 232, lesson: 2, kanji: "", kana: "チョコレート", english: "chocolate" },
+    { id: 233, lesson: 2, kanji: "", kana: "コーヒー", english: "coffee" },
+    { id: 234, lesson: 2, kanji: "英語", kana: "えいご", english: "the English language" },
+    { id: 235, lesson: 2, kanji: "日本語", kana: "にほんご", english: "the Japanese language" },
+    { id: 236, lesson: 2, kanji: "～語", kana: "～ご", english: "~ language" },
+    { id: 237, lesson: 2, kanji: "何", kana: "なん", english: "what" },
+    { id: 238, lesson: 2, kanji: "", kana: "そう", english: "so" },
+    { id: 239, lesson: 2, kanji: "違います", kana: "ちがいます", english: "No, it isn't. / You are wrong." },
+    { id: 240, lesson: 2, kanji: "", kana: "そうですか", english: "I see. / Is that so?" },
+    { id: 241, lesson: 2, kanji: "", kana: "あのう", english: "well... (used to show hesitation)" },
+    { id: 242, lesson: 2, kanji: "ほんの気持ちです", kana: "ほんのきもちです", english: "It's nothing. / It's a token of my gratitude." },
+    { id: 243, lesson: 2, kanji: "", kana: "どうぞ", english: "Please. / Here you are." },
+    { id: 244, lesson: 2, kanji: "", kana: "どうも", english: "Well, thanks." },
+    { id: 245, lesson: 2, kanji: "", kana: "[どうも]ありがとう[ございます]", english: "Thank you [very much]." },
+    { id: 246, lesson: 2, kanji: "これからお世話になります", kana: "これからおせわになります", english: "I hope for your kind assistance hereafter." },
+    { id: 247, lesson: 2, kanji: "こちらこそよろしく", kana: "こちらこそよろしく", english: "I am pleased to meet you. (response to 'douzo yoroshiku')" },
+
+    // 第3课 (Lesson 3)
+    { id: 301, lesson: 3, kanji: "", kana: "ここ", english: "here, this place" },
+    { id: 302, lesson: 3, kanji: "", kana: "そこ", english: "there, that place near you" },
+    { id: 303, lesson: 3, kanji: "", kana: "あそこ", english: "that place over there" },
+    { id: 304, lesson: 3, kanji: "", kana: "どこ", english: "where, what place" },
+    { id: 305, lesson: 3, kanji: "", kana: "こちら", english: "this way, this place (polite equivalent of koko)" },
+    { id: 306, lesson: 3, kanji: "", kana: "そちら", english: "that way, that place near you (polite equivalent of soko)" },
+    { id: 307, lesson: 3, kanji: "", kana: "あちら", english: "that way, that place over there (polite equivalent of asoko)" },
+    { id: 308, lesson: 3, kanji: "", kana: "どちら", english: "which way, where (polite equivalent of doko)" },
+    { id: 309, lesson: 3, kanji: "教室", kana: "きょうしつ", english: "classroom" },
+    { id: 310, lesson: 3, kanji: "食堂", kana: "しょくどう", english: "dining hall, canteen" },
+    { id: 311, lesson: 3, kanji: "事務所", kana: "じむしょ", english: "office" },
+    { id: 312, lesson: 3, kanji: "会議室", kana: "かいぎしつ", english: "conference room, meeting room" },
+    { id: 313, lesson: 3, kanji: "受付", kana: "うけつけ", english: "reception desk" },
+    { id: 314, lesson: 3, kanji: "", kana: "ロビー", english: "lobby" },
+    { id: 315, lesson: 3, kanji: "部屋", kana: "へや", english: "room" },
+    { id: 316, lesson: 3, kanji: "トイレ", kana: "トイレ（お手洗い）", english: "toilet, rest room" },
+    { id: 317, lesson: 3, kanji: "階段", kana: "かいだん", english: "staircase" },
+    { id: 318, lesson: 3, kanji: "", kana: "エレベーター", english: "elevator, lift" },
+    { id: 319, lesson: 3, kanji: "", kana: "エスカレーター", english: "escalator" },
+    { id: 320, lesson: 3, kanji: "[お]国", kana: "[お]くに", english: "country" },
+    { id: 321, lesson: 3, kanji: "会社", kana: "かいしゃ", english: "company" },
+    { id: 322, lesson: 3, kanji: "", kana: "うち", english: "house, home" },
+    { id: 323, lesson: 3, kanji: "电话", kana: "でんわ", english: "telephone, telephone call" },
+    { id: 324, lesson: 3, kanji: "靴", kana: "くつ", english: "shoes" },
+    { id: 325, lesson: 3, kanji: "", kana: "ネクタイ", english: "necktie" },
+    { id: 326, lesson: 3, kanji: "", kana: "ワイン", english: "wine" },
+    { id: 327, lesson: 3, kanji: "", kana: "たばこ", english: "tobacco, cigarette" },
+    { id: 328, lesson: 3, kanji: "売り場", kana: "うりば", english: "department, counter (in a department store)" },
+    { id: 329, lesson: 3, kanji: "地下", kana: "ちか", english: "basement" },
+    { id: 330, lesson: 3, kanji: "～階", kana: "～かい", english: "—th floor" },
+    { id: 331, lesson: 3, kanji: "何階", kana: "なんがい", english: "what floor" },
+    { id: 332, lesson: 3, kanji: "～円", kana: "～えん", english: "—yen" },
+    { id: 333, lesson: 3, kanji: "", kana: "いくら", english: "how much" },
+    { id: 334, lesson: 3, kanji: "百", kana: "ひゃく", english: "hundred" },
+    { id: 335, lesson: 3, kanji: "千", kana: "せん", english: "thousand" },
+    { id: 336, lesson: 3, kanji: "万", kana: "まん", english: "ten thousand" },
+    { id: 337, lesson: 3, kanji: "", kana: "すみません", english: "Excuse me" },
+    { id: 338, lesson: 3, kanji: "", kana: "～でございます", english: "(polite equivalent of 'desu')" },
+    { id: 339, lesson: 3, kanji: "", kana: "[～を]見せてください", english: "Please show me [~]." },
+    { id: 340, lesson: 3, kanji: "", kana: "じゃ", english: "well, then, in that case" },
+    { id: 341, lesson: 3, kanji: "", kana: "[～を]ください", english: "Give me [~], please." },
+
+    // 第4课 (Lesson 4)
+    { id: 401, lesson: 4, kanji: "起きます", kana: "おきます", english: "get up, wake up" },
+    { id: 402, lesson: 4, kanji: "寝ます", kana: "ねます", english: "sleep, go to bed" },
+    { id: 403, lesson: 4, kanji: "働きます", kana: "はたらきます", english: "work" },
+    { id: 404, lesson: 4, kanji: "休みます", kana: "やすみます", english: "take a rest, take a holiday" },
+    { id: 405, lesson: 4, kanji: "勉強します", kana: "べんきょうします", english: "study" },
+    { id: 406, lesson: 4, kanji: "終わります", kana: "おわります", english: "finish" },
+    { id: 407, lesson: 4, kanji: "", kana: "デパート", english: "department store" },
+    { id: 408, lesson: 4, kanji: "銀行", kana: "ぎんこう", english: "bank" },
+    { id: 409, lesson: 4, kanji: "郵便局", kana: "ゆうびんきょく", english: "post office" },
+    { id: 410, lesson: 4, kanji: "図書館", kana: "としょかん", english: "library" },
+    { id: 411, lesson: 4, kanji: "美術館", kana: "びじゅつかん", english: "art museum" },
+    { id: 412, lesson: 4, kanji: "今", kana: "いま", english: "now" },
+    { id: 413, lesson: 4, kanji: "～时", kana: "～じ", english: "—o'clock" },
+    { id: 414, lesson: 4, kanji: "～分", kana: "～ふん/ぷん", english: "—minute" },
+    { id: 415, lesson: 4, kanji: "半", kana: "はん", english: "half" },
+    { id: 416, lesson: 4, kanji: "何時", kana: "なんじ", english: "what time" },
+    { id: 417, lesson: 4, kanji: "何分", kana: "なんぷん", english: "what minute" },
+    { id: 418, lesson: 4, kanji: "午前", kana: "ごぜん", english: "a.m., morning" },
+    { id: 419, lesson: 4, kanji: "午後", kana: "ごご", english: "p.m., afternoon" },
+    { id: 420, lesson: 4, kanji: "朝", kana: "あさ", english: "morning" },
+    { id: 421, lesson: 4, kanji: "昼", kana: "ひる", english: "daytime, noon" },
+    { id: 422, lesson: 4, kanji: "晩", kana: "ばん", english: "night, evening (Yoru: night)" },
+    { id: 423, lesson: 4, kanji: "", kana: "おととい", english: "the day before yesterday" },
+    { id: 424, lesson: 4, kanji: "", kana: "きのう", english: "yesterday" },
+    { id: 425, lesson: 4, kanji: "", kana: "きょう", english: "today" },
+    { id: 426, lesson: 4, kanji: "", kana: "あした", english: "tomorrow" },
+    { id: 427, lesson: 4, kanji: "", kana: "あさって", english: "the day after tomorrow" },
+    { id: 428, lesson: 4, kanji: "今朝", kana: "けさ", english: "this morning" },
+    { id: 429, lesson: 4, kanji: "今晩", kana: "こんばん", english: "this evening, tonight" },
+    { id: 430, lesson: 4, kanji: "休み", kana: "やすみ", english: "rest, a holiday, a day off" },
+    { id: 431, lesson: 4, kanji: "昼休み", kana: "ひるやすみ", english: "lunchtime" },
+    { id: 432, lesson: 4, kanji: "試験", kana: "しけん", english: "examination, test" },
+    { id: 433, lesson: 4, kanji: "会议", kana: "かいぎ", english: "meeting, conference" },
+    { id: 434, lesson: 4, kanji: "映画", kana: "えいが", english: "movie, film" },
+    { id: 435, lesson: 4, kanji: "毎朝", kana: "まいあさ", english: "every morning" },
+    { id: 436, lesson: 4, kanji: "毎晩", kana: "まいばん", english: "every night" },
+    { id: 437, lesson: 4, kanji: "毎日", kana: "まいにち", english: "every day" },
+    { id: 438, lesson: 4, kanji: "月曜日", kana: "げつようび", english: "Monday" },
+    { id: 439, lesson: 4, kanji: "火曜日", kana: "かようび", english: "Tuesday" },
+    { id: 440, lesson: 4, kanji: "水曜日", kana: "すいようび", english: "Wednesday" },
+    { id: 441, lesson: 4, kanji: "木曜日", kana: "もくようび", english: "Thursday" },
+    { id: 442, lesson: 4, kanji: "金曜日", kana: "きんようび", english: "Friday" },
+    { id: 443, lesson: 4, kanji: "土曜日", kana: "どようび", english: "Saturday" },
+    { id: 444, lesson: 4, kanji: "日曜日", kana: "にちようび", english: "Sunday" },
+    { id: 445, lesson: 4, kanji: "何曜日", kana: "なんようび", english: "what day of the week" },
+    { id: 446, lesson: 4, kanji: "番号", kana: "ばんごう", english: "number" },
+    { id: 447, lesson: 4, kanji: "何番", kana: "なんばん", english: "what number" },
+    { id: 448, lesson: 4, kanji: "", kana: "～から", english: "from ~" },
+    { id: 449, lesson: 4, kanji: "", kana: "～まで", english: "up to ~, until ~" },
+    { id: 450, lesson: 4, kanji: "", kana: "～と～", english: "and (connecting nouns)" },
+    { id: 451, lesson: 4, kanji: "", kana: "そちら", english: "your place" },
+    { id: 452, lesson: 4, kanji: "大変ですね", kana: "たいへんですね", english: "That's tough, isn't it? (used when expressing sympathy)" },
+    { id: 453, lesson: 4, kanji: "", kana: "えーと", english: "well, let me see" },
+    { id: 454, lesson: 4, kanji: "お願いします", kana: "おねがいします", english: "Please. (lit. ask for a favor)" },
+    { id: 455, lesson: 4, kanji: "畏まりました", kana: "かしこまりました", english: "Certainly (sir, madam)." },
+    { id: 456, lesson: 4, kanji: "お問い合わせの番号", kana: "おといあわせのばんごう", english: "the number being inquired about" },
+
+    // 第5课 (Lesson 5)
+    { id: 501, lesson: 5, kanji: "行きます", kana: "いきます", english: "go" },
+    { id: 502, lesson: 5, kanji: "来ます", kana: "きます", english: "come" },
+    { id: 503, lesson: 5, kanji: "帰ります", kana: "かえります", english: "go home, return" },
+    { id: 504, lesson: 5, kanji: "学校", kana: "がっこう", english: "school" },
+    { id: 505, lesson: 5, kanji: "", kana: "スーパー", english: "supermarket" },
+    { id: 506, lesson: 5, kanji: "駅", kana: "えき", english: "station" },
+    { id: 507, lesson: 5, kanji: "飛行機", kana: "ひこうき", english: "airplane" },
+    { id: 508, lesson: 5, kanji: "船", kana: "ふね", english: "ship" },
+    { id: 509, lesson: 5, kanji: "電車", kana: "でんしゃ", english: "electric train" },
+    { id: 510, lesson: 5, kanji: "地下鉄", kana: "ちかてつ", english: "subway, underground" },
+    { id: 511, lesson: 5, kanji: "新幹線", kana: "しんかんせん", english: "Shinkansen (the bullet train)" },
+    { id: 512, lesson: 5, kanji: "", kana: "バス", english: "bus" },
+    { id: 513, lesson: 5, kanji: "", kana: "タクシー", english: "taxi" },
+    { id: 514, lesson: 5, kanji: "自転車", kana: "じてんしゃ", english: "bicycle" },
+    { id: 515, lesson: 5, kanji: "歩いて", kana: "あるいて", english: "on foot" },
+    { id: 516, lesson: 5, kanji: "人", kana: "ひと", english: "person, people" },
+    { id: 517, lesson: 5, kanji: "友達", kana: "ともだち", english: "friend" },
+    { id: 518, lesson: 5, kanji: "彼", kana: "かれ", english: "he, boyfriend, lover" },
+    { id: 519, lesson: 5, kanji: "彼女", kana: "かのじょ", english: "she, girlfriend, lover" },
+    { id: 520, lesson: 5, kanji: "家族", kana: "かぞく", english: "family" },
+    { id: 521, lesson: 5, kanji: "一人で", kana: "ひとりで", english: "alone, by oneself" },
+    { id: 522, lesson: 5, kanji: "先週", kana: "せんしゅう", english: "last week" },
+    { id: 523, lesson: 5, kanji: "今週", kana: "こんしゅう", english: "this week" },
+    { id: 524, lesson: 5, kanji: "来週", kana: "らいしゅう", english: "next week" },
+    { id: 525, lesson: 5, kanji: "先月", kana: "せんげつ", english: "last month" },
+    { id: 526, lesson: 5, kanji: "今月", kana: "こんげつ", english: "this month" },
+    { id: 527, lesson: 5, kanji: "来月", kana: "らいげつ", english: "next month" },
+    { id: 528, lesson: 5, kanji: "去年", kana: "きょねん", english: "last year" },
+    { id: 529, lesson: 5, kanji: "今年", kana: "ことし", english: "this year" },
+    { id: 530, lesson: 5, kanji: "来年", kana: "らいねん", english: "next year" },
+    { id: 531, lesson: 5, kanji: "～月", kana: "～がつ", english: "—th month of the year" },
+    { id: 532, lesson: 5, kanji: "何月", kana: "なんがつ", english: "what month" },
+    { id: 533, lesson: 5, kanji: "一日", kana: "ついたち", english: "first day of the month" },
+    { id: 534, lesson: 5, kanji: "二日", kana: "ふつか", english: "second, two days" },
+    { id: 535, lesson: 5, kanji: "三日", kana: "みっか", english: "third, three days" },
+    { id: 536, lesson: 5, kanji: "四日", kana: "よっか", english: "fourth, four days" },
+    { id: 537, lesson: 5, kanji: "五日", kana: "いつか", english: "fifth, five days" },
+    { id: 538, lesson: 5, kanji: "六日", kana: "むいか", english: "sixth, six days" },
+    { id: 539, lesson: 5, kanji: "七日", kana: "なのか", english: "seventh, seven days" },
+    { id: 540, lesson: 5, kanji: "八日", kana: "ようか", english: "eighth, eight days" },
+    { id: 541, lesson: 5, kanji: "九日", kana: "ここのか", english: "ninth, nine days" },
+    { id: 542, lesson: 5, kanji: "十日", kana: "とおか", english: "tenth, ten days" },
+    { id: 543, lesson: 5, kanji: "十四日", kana: "じゅうよっか", english: "fourteenth, fourteen days" },
+    { id: 544, lesson: 5, kanji: "二十日", kana: "はつか", english: "twentieth, twenty days" },
+    { id: 545, lesson: 5, kanji: "二十四日", kana: "にじゅうよっか", english: "twenty-fourth, twenty-four days" },
+    { id: 546, lesson: 5, kanji: "～日", kana: "～にち", english: "—th day of the month, —days" },
+    { id: 547, lesson: 5, kanji: "何日", kana: "なんにち", english: "which day of the month, how many days" },
+    { id: 548, lesson: 5, kanji: "", kana: "いつ", english: "when" },
+    { id: 549, lesson: 5, kanji: "誕生日", kana: "たんじょうび", english: "birthday" },
+    { id: 550, lesson: 5, kanji: "普通", kana: "ふつう", english: "local (train)" },
+    { id: 551, lesson: 5, kanji: "急行", kana: "きゅうこう", english: "rapid" },
+    { id: 552, lesson: 5, kanji: "特急", kana: "とっきゅう", english: "express" },
+    { id: 553, lesson: 5, kanji: "次の", kana: "つぎの", english: "next" },
+    { id: 554, lesson: 5, kanji: "～番線", kana: "～ばんせん", english: "platform —, —th platform" },
+
+    // 第6课 (Lesson 6)
+    { id: 601, lesson: 6, kanji: "食べます", kana: "たべます", english: "eat" },
+    { id: 602, lesson: 6, kanji: "飲みます", kana: "のみます", english: "drink" },
+    { id: 603, lesson: 6, kanji: "吸います", kana: "すいます", english: "smoke [tabako o ~]" },
+    { id: 604, lesson: 6, kanji: "見ます", kana: "みます", english: "see, look at, watch" },
+    { id: 605, lesson: 6, kanji: "聞きます", kana: "ききます", english: "hear, listen" },
+    { id: 606, lesson: 6, kanji: "読みます", kana: "よみます", english: "read" },
+    { id: 607, lesson: 6, kanji: "書きます", kana: "かきいます", english: "write, draw, paint" },
+    { id: 608, lesson: 6, kanji: "買います", kana: "かいます", english: "buy" },
+    { id: 609, lesson: 6, kanji: "撮ります", kana: "とります", english: "take [shashin o ~] (photograph)" },
+    { id: 610, lesson: 6, kanji: "", kana: "します", english: "do" },
+    { id: 611, lesson: 6, kanji: "会います", kana: "あいます", english: "meet [tomodachi ni ~]" },
+    { id: 612, lesson: 6, kanji: "", kana: "ごはん", english: "a meal, cooked rice" },
+    { id: 613, lesson: 6, kanji: "朝ごはん", kana: "あさごはん", english: "breakfast" },
+    { id: 614, lesson: 6, kanji: "昼ごはん", kana: "ひるごはん", english: "lunch" },
+    { id: 615, lesson: 6, kanji: "晩ごはん", kana: "ばんごはん", english: "supper, dinner" },
+    { id: 616, lesson: 6, kanji: "", kana: "パン", english: "bread" },
+    { id: 617, lesson: 6, kanji: "卵", kana: "たまご", english: "egg" },
+    { id: 618, lesson: 6, kanji: "肉", kana: "にく", english: "meat" },
+    { id: 619, lesson: 6, kanji: "魚", kana: "さかな", english: "fish" },
+    { id: 620, lesson: 6, kanji: "野菜", kana: "やさい", english: "vegetable" },
+    { id: 621, lesson: 6, kanji: "果物", kana: "くだもの", english: "fruit" },
+    { id: 622, lesson: 6, kanji: "水", kana: "みず", english: "water" },
+    { id: 623, lesson: 6, kanji: "お茶", kana: "おちゃ", english: "tea, green tea" },
+    { id: 624, lesson: 6, kanji: "紅茶", kana: "こうちゃ", english: "black tea" },
+    { id: 625, lesson: 6, kanji: "牛乳", kana: "ぎゅうにゅう", english: "milk (miruku)" },
+    { id: 626, lesson: 6, kanji: "", kana: "ジュース", english: "juice" },
+    { id: 627, lesson: 6, kanji: "", kana: "ビール", english: "beer" },
+    { id: 628, lesson: 6, kanji: "[お]酒", kana: "[お]さけ", english: "alcohol, sake" },
+    { id: 629, lesson: 6, kanji: "", kana: "ビデオ", english: "video tape, video deck" },
+    { id: 630, lesson: 6, kanji: "映画", kana: "えいが", english: "movie" },
+    { id: 631, lesson: 6, kanji: "手紙", kana: "てがみ", english: "letter" },
+    { id: 632, lesson: 6, kanji: "", kana: "レポート", english: "report" },
+    { id: 633, lesson: 6, kanji: "写真", kana: "しゃしん", english: "photograph" },
+    { id: 634, lesson: 6, kanji: "店", kana: "みせ", english: "store, shop" },
+    { id: 635, lesson: 6, kanji: "", kana: "レストラン", english: "restaurant" },
+    { id: 636, lesson: 6, kanji: "庭", kana: "にわ", english: "garden" },
+    { id: 637, lesson: 6, kanji: "宿題", kana: "しゅくだい", english: "homework (~ o shimasu: do homework)" },
+    { id: 638, lesson: 6, kanji: "", kana: "テニス", english: "tennis" },
+    { id: 639, lesson: 6, kanji: "", kana: "サッカー", english: "soccer, football" },
+    { id: 640, lesson: 6, kanji: "[お]花見", kana: "[お]はなみ", english: "cherry-blossom viewing (~ o shimasu)" },
+    { id: 641, lesson: 6, kanji: "何", kana: "なに", english: "what" },
+    { id: 642, lesson: 6, kanji: "一緒に", kana: "いっしょに", english: "together" },
+    { id: 643, lesson: 6, kanji: "", kana: "ちょっと", english: "a little while, a little bit" },
+    { id: 644, lesson: 6, kanji: "", kana: "いつも", english: "always, usually" },
+    { id: 645, lesson: 6, kanji: "時々", kana: "ときどき", english: "sometimes" },
+    { id: 646, lesson: 6, kanji: "", kana: "それから", english: "after that, and then" },
+    { id: 647, lesson: 6, kanji: "", kana: "ええ", english: "yes" },
+    { id: 648, lesson: 6, kanji: "いいですね", kana: "いいですね", english: "That's good." },
+    { id: 649, lesson: 6, kanji: "分かりました", kana: "わかりました", english: "I see. / I understand." },
+    { id: 650, lesson: 6, kanji: "何ですか", kana: "なんですか", english: "Yes?" },
+    { id: 651, lesson: 6, kanji: "", kana: "じゃ、また", english: "See you [tomorrow]." },
+
+    // 第7课 (Lesson 7)
+    { id: 701, lesson: 7, kanji: "切ります", kana: "きります", english: "cut, slice" },
+    { id: 702, lesson: 7, kanji: "送ります", kana: "おくります", english: "send" },
+    { id: 703, lesson: 7, kanji: "", kana: "あげます", english: "give" },
+    { id: 704, lesson: 7, kanji: "", kana: "もらいます", english: "receive" },
+    { id: 705, lesson: 7, kanji: "貸します", kana: "かします", english: "lend" },
+    { id: 706, lesson: 7, kanji: "借ります", kana: "かります", english: "borrow" },
+    { id: 707, lesson: 7, kanji: "教えます", kana: "おしえます", english: "teach" },
+    { id: 708, lesson: 7, kanji: "習います", kana: "ならいます", english: "learn" },
+    { id: 709, lesson: 7, kanji: "", kana: "かけます", english: "make [denwa o ~] (a telephone call)" },
+    { id: 710, lesson: 7, kanji: "手", kana: "て", english: "hand, arm" },
+    { id: 711, lesson: 7, kanji: "", kana: "はし", english: "chopsticks" },
+    { id: 712, lesson: 7, kanji: "", kana: "スプーン", english: "spoon" },
+    { id: 713, lesson: 7, kanji: "", kana: "ナイフ", english: "knife" },
+    { id: 714, lesson: 7, kanji: "", kana: "フォーク", english: "fork" },
+    { id: 715, lesson: 7, kanji: "", kana: "はさみ", english: "scissors" },
+    { id: 716, lesson: 7, kanji: "", kana: "ファクス", english: "fax" },
+    { id: 717, lesson: 7, kanji: "", kana: "ワープロ", english: "word processor" },
+    { id: 718, lesson: 7, kanji: "", kana: "パソコン", english: "personal computer" },
+    { id: 719, lesson: 7, kanji: "", kana: "パンチ", english: "punch" },
+    { id: 720, lesson: 7, kanji: "", kana: "ホッチキス", english: "stapler" },
+    { id: 721, lesson: 7, kanji: "", kana: "セロテープ", english: "Scotch tape, clear adhesive tape" },
+    { id: 722, lesson: 7, kanji: "消しゴム", kana: "けしゴム", english: "eraser" },
+    { id: 723, lesson: 7, kanji: "紙", kana: "かみ", english: "paper" },
+    { id: 724, lesson: 7, kanji: "花", kana: "はな", english: "flower, blossom" },
+    { id: 725, lesson: 7, kanji: "", kana: "シャツ", english: "shirt" },
+    { id: 726, lesson: 7, kanji: "", kana: "プレゼント", english: "present, gift" },
+    { id: 727, lesson: 7, kanji: "荷物", kana: "にもつ", english: "baggage, parcel" },
+    { id: 728, lesson: 7, kanji: "お金", kana: "おかね", english: "money" },
+    { id: 729, lesson: 7, kanji: "切符", kana: "きっぷ", english: "ticket" },
+    { id: 730, lesson: 7, kanji: "", kana: "クリスマス", english: "Christmas" },
+    { id: 731, lesson: 7, kanji: "父", kana: "ちち", english: "(my) father" },
+    { id: 732, lesson: 7, kanji: "母", kana: "はは", english: "(my) mother" },
+    { id: 733, lesson: 7, kanji: "お父さん", kana: "おとうさん", english: "(someone else's) father" },
+    { id: 734, lesson: 7, kanji: "お母さん", kana: "おかあさん", english: "(someone else's) mother" },
+    { id: 735, lesson: 7, kanji: "", kana: "もう", english: "already" },
+    { id: 736, lesson: 7, kanji: "", kana: "まだ", english: "not yet" },
+    { id: 737, lesson: 7, kanji: "", kana: "これから", english: "from now on, soon" },
+    { id: 738, lesson: 7, kanji: "素敵ですね", kana: "すてきですね", english: "What a nice [~]!" },
+    { id: 739, lesson: 7, kanji: "", kana: "ごめんください", english: "Excuse me. / Anybody home?" },
+    { id: 740, lesson: 7, kanji: "", kana: "いらっしゃい", english: "How nice of you to come. (lit. Welcome)" },
+    { id: 741, lesson: 7, kanji: "どうぞお上がりください", kana: "どうぞおあがりください", english: "Do come in." },
+    { id: 742, lesson: 7, kanji: "失礼します", kana: "しつれいします", english: "Thank you. / May I? (lit. I'm afraid I'm being rude)" },
+    { id: 743, lesson: 7, kanji: "", kana: "[～は]いかがですか", english: "Won't you have [~]?" },
+    { id: 744, lesson: 7, kanji: "", kana: "いただきます", english: "Thank you. / I accept. (said before eating or drinking)" },
+    { id: 745, lesson: 7, kanji: "", kana: "ごちそうさま", english: "That was delicious. (said after eating or drinking)" },
+
+    // 第8课 (Lesson 8)
+    { id: 801, lesson: 8, kanji: "", kana: "ハンサム[な]", english: "handsome" },
+    { id: 802, lesson: 8, kanji: "", kana: "きれい[な]", english: "beautiful, clean" },
+    { id: 803, lesson: 8, kanji: "静か[な]", kana: "しずか[な]", english: "quiet" },
+    { id: 804, lesson: 8, kanji: "", kana: "にぎやか[な]", english: "lively" },
+    { id: 805, lesson: 8, kanji: "有名[な]", kana: "ゆうめい[な]", english: "famous" },
+    { id: 806, lesson: 8, kanji: "亲切[な]", kana: "しんせつ[な]", english: "kind" },
+    { id: 807, lesson: 8, kanji: "元気[な]", kana: "げんき[な]", english: "healthy, sound, cheerful" },
+    { id: 808, lesson: 8, kanji: "暇[な]", kana: "ひま[な]", english: "free time" },
+    { id: 809, lesson: 8, kanji: "便利[な]", kana: "べんり[な]", english: "convenient" },
+    { id: 810, lesson: 8, kanji: "", kana: "すてき[な]", english: "fine, nice, wonderful" },
+    { id: 811, lesson: 8, kanji: "大きい", kana: "おおきい", english: "big, large" },
+    { id: 812, lesson: 8, kanji: "小さい", kana: "ちいさい", english: "small, little" },
+    { id: 813, lesson: 8, kanji: "新しい", kana: "あたらしい", english: "new" },
+    { id: 814, lesson: 8, kanji: "古い", kana: "ふるい", english: "old (not of age)" },
+    { id: 815, lesson: 8, kanji: "", kana: "いい（よい）", english: "good" },
+    { id: 816, lesson: 8, kanji: "悪い", kana: "わるい", english: "bad" },
+    { id: 817, lesson: 8, kanji: "暑い/熱い", kana: "あつい", english: "hot (weather / object)" },
+    { id: 818, lesson: 8, kanji: "寒い", kana: "さむい", english: "cold (referring to temperature)" },
+    { id: 819, lesson: 8, kanji: "冷たい", kana: "つめたい", english: "cold (referring to touch)" },
+    { id: 820, lesson: 8, kanji: "難しい", kana: "むずかしい", english: "difficult" },
+    { id: 821, lesson: 8, kanji: "易しい", kana: "やさしい", english: "easy" },
+    { id: 822, lesson: 8, kanji: "高い", kana: "たかい", english: "high, expensive" },
+    { id: 823, lesson: 8, kanji: "安い", kana: "やすい", english: "inexpensive, cheap" },
+    { id: 824, lesson: 8, kanji: "低い", kana: "ひくい", english: "low" },
+    { id: 825, lesson: 8, kanji: "", kana: "おもしろい", english: "interesting" },
+    { id: 826, lesson: 8, kanji: "", kana: "おいしい", english: "delicious, tasty" },
+    { id: 827, lesson: 8, kanji: "忙しい", kana: "いそがしい", english: "busy" },
+    { id: 828, lesson: 8, kanji: "楽しい", kana: "たのしい", english: "enjoyable" },
+    { id: 829, lesson: 8, kanji: "白い", kana: "しろい", english: "white" },
+    { id: 830, lesson: 8, kanji: "黒い", kana: "くろい", english: "black" },
+    { id: 831, lesson: 8, kanji: "赤い", kana: "あかい", english: "red" },
+    { id: 832, lesson: 8, kanji: "青い", kana: "あおい", english: "blue" },
+    { id: 833, lesson: 8, kanji: "山", kana: "やま", english: "mountain" },
+    { id: 834, lesson: 8, kanji: "町", kana: "まち", english: "town, city" },
+    { id: 835, lesson: 8, kanji: "食べ物", kana: "たべもの", english: "food" },
+    { id: 836, lesson: 8, kanji: "車", kana: "くるま", english: "car, vehicle" },
+    { id: 837, lesson: 8, kanji: "所", kana: "ところ", english: "place" },
+    { id: 838, lesson: 8, kanji: "寮", kana: "りょう", english: "dormitory" },
+    { id: 839, lesson: 8, kanji: "勉強", kana: "べんきょう", english: "study" },
+    { id: 840, lesson: 8, kanji: "生活", kana: "せいかつ", english: "life" },
+    { id: 841, lesson: 8, kanji: "[お]仕事", kana: "[お]しごと", english: "work, business (~ o shimasu: do one's job)" },
+    { id: 842, lesson: 8, kanji: "", kana: "どう", english: "how" },
+    { id: 843, lesson: 8, kanji: "", kana: "どんな～", english: "what kind of ~" },
+    { id: 844, lesson: 8, kanji: "", kana: "どれ", english: "which one (of three or more)" },
+    { id: 845, lesson: 8, kanji: "", kana: "とても", english: "very" },
+    { id: 846, lesson: 8, kanji: "", kana: "あまり", english: "not so (used with negatives)" },
+    { id: 847, lesson: 8, kanji: "", kana: "そして", english: "and (connecting sentences)" },
+    { id: 848, lesson: 8, kanji: "", kana: "が", english: "but" },
+    { id: 849, lesson: 8, kanji: "お元気ですか", kana: "おげんきですか", english: "How are you?" },
+    { id: 850, lesson: 8, kanji: "", kana: "そうですね", english: "Well, let me see. (pausing)" },
+    { id: 851, lesson: 8, kanji: "日本の生活になれましたか", kana: "～になれましたか", english: "Have you got used to the life in Japan?" },
+    { id: 852, lesson: 8, kanji: "", kana: "[～、]もう一杯いかがですか", english: "Won't you have another cup of [~]?" },
+    { id: 853, lesson: 8, kanji: "", kana: "いいえ、けっこうです", english: "No, thank you." },
+    { id: 854, lesson: 8, kanji: "そろそろ失礼します", kana: "そろそろしつれいします", english: "It's almost time to leave." },
+    { id: 855, lesson: 8, kanji: "", kana: "またいらっしゃってください", english: "Please come again." },
+
+    // 第9课 (Lesson 9)
+    { id: 901, lesson: 9, kanji: "分かります", kana: "わかります", english: "understand" },
+    { id: 902, lesson: 9, kanji: "", kana: "あります", english: "have, possession" },
+    { id: 903, lesson: 9, kanji: "好き[な]", kana: "すき[な]", english: "like" },
+    { id: 904, lesson: 9, kanji: "嫌い[な]", kana: "きらい[な]", english: "dislike" },
+    { id: 905, lesson: 9, kanji: "上手[な]", kana: "じょうず[な]", english: "good at" },
+    { id: 906, lesson: 9, kanji: "下手[な]", kana: "へた[な]", english: "poor at" },
+    { id: 907, lesson: 9, kanji: "料理", kana: "りょうり", english: "dish (cooked food), cooking" },
+    { id: 908, lesson: 9, kanji: "飲み物", kana: "のみもの", english: "drinks" },
+    { id: 909, lesson: 9, kanji: "", kana: "スポーツ", english: "sport (~ o shimasu: play sports)" },
+    { id: 910, lesson: 9, kanji: "野球", kana: "やきゅう", english: "baseball (~ o shimasu: play baseball)" },
+    { id: 911, lesson: 9, kanji: "", kana: "ダンス", english: "dance (~ o shimasu: dance)" },
+    { id: 912, lesson: 9, kanji: "旅行", kana: "りょこう", english: "trip, tour" },
+    { id: 913, lesson: 9, kanji: "音乐", kana: "おんがく", english: "music" },
+    { id: 914, lesson: 9, kanji: "歌", kana: "うた", english: "song" },
+    { id: 915, lesson: 9, kanji: "", kana: "クラシック", english: "classical music" },
+    { id: 916, lesson: 9, kanji: "", kana: "ジャズ", english: "jazz" },
+    { id: 917, lesson: 9, kanji: "", kana: "コンサート", english: "concert" },
+    { id: 918, lesson: 9, kanji: "", kana: "カラオケ", english: "karaoke" },
+    { id: 919, lesson: 9, kanji: "歌舞伎", kana: "かぶき", english: "Kabuki (traditional Japanese musical drama)" },
+    { id: 920, lesson: 9, kanji: "絵", kana: "え", english: "picture, drawing" },
+    { id: 921, lesson: 9, kanji: "字", kana: "じ", english: "letter, character" },
+    { id: 922, lesson: 9, kanji: "漢字", kana: "かんじ", english: "Chinese characters" },
+    { id: 923, lesson: 9, kanji: "", kana: "ひらがな", english: "Hiragana script" },
+    { id: 924, lesson: 9, kanji: "", kana: "カタカナ", english: "Katakana script" },
+    { id: 925, lesson: 9, kanji: "", kana: "ローマ字", english: "the Roman alphabet" },
+    { id: 926, lesson: 9, kanji: "細かいお金", kana: "こまかいおかね", english: "small change" },
+    { id: 927, lesson: 9, kanji: "", kana: "チケット", english: "ticket" },
+    { id: 928, lesson: 9, kanji: "时间", kana: "じかん", english: "time" },
+    { id: 929, lesson: 9, kanji: "用事", kana: "ようじ", english: "something to do, errand" },
+    { id: 930, lesson: 9, kanji: "約束", kana: "やくそく", english: "appointment, promise" },
+    { id: 931, lesson: 9, kanji: "", kana: "アルバイト", english: "side job (~ o shimasu: work part-time)" },
+    { id: 932, lesson: 9, kanji: "ご主人", kana: "ごしゅじん", english: "(someone else's) husband" },
+    { id: 933, lesson: 9, kanji: "夫/主人", kana: "おっと/しゅじん", english: "(my) husband" },
+    { id: 934, lesson: 9, kanji: "奥さん", kana: "おくさん", english: "(someone else's) wife" },
+    { id: 935, lesson: 9, kanji: "妻/家内", kana: "つま/かない", english: "(my) wife" },
+    { id: 936, lesson: 9, kanji: "子ども", kana: "こども", english: "child" },
+    { id: 937, lesson: 9, kanji: "", kana: "よく", english: "well, much" },
+    { id: 938, lesson: 9, kanji: "", kana: "だいたい", english: "mostly, roughly" },
+    { id: 939, lesson: 9, kanji: "", kana: "たくさん", english: "many, much" },
+    { id: 940, lesson: 9, kanji: "少し", kana: "すこし", english: "a little, a few" },
+    { id: 941, lesson: 9, kanji: "全然", kana: "ぜんぜん", english: "not at all (used with negatives)" },
+    { id: 942, lesson: 9, kanji: "早い/速い", kana: "はやく", english: "early, quickly, fast" },
+    { id: 943, lesson: 9, kanji: "", kana: "～から", english: "because ~" },
+    { id: 944, lesson: 9, kanji: "", kana: "どうして", english: "why" },
+    { id: 945, lesson: 9, kanji: "残念です", kana: "ざんねんです", english: "I'm sorry (to hear that) / That's a pity." },
+    { id: 946, lesson: 9, kanji: "", kana: "もしもし", english: "Hello (used on the phone)" },
+
+    // 第10课 (Lesson 10)
+    { id: 1001, lesson: 10, kanji: "", kana: "います", english: "exist, be (referring to animate things)" },
+    { id: 1002, lesson: 10, kanji: "", kana: "あります", english: "exist, be (referring to inanimate things)" },
+    { id: 1003, lesson: 10, kanji: "", kana: "いろいろ[な]", english: "various" },
+    { id: 1004, lesson: 10, kanji: "男の人", kana: "おとこのひと", english: "man" },
+    { id: 1005, lesson: 10, kanji: "女の人", kana: "おんなのひと", english: "woman" },
+    { id: 1006, lesson: 10, kanji: "男の子", kana: "おとこのこ", english: "boy" },
+    { id: 1007, lesson: 10, kanji: "女の子", kana: "おんなのこ", english: "girl" },
+    { id: 1008, lesson: 10, kanji: "犬", kana: "いぬ", english: "dog" },
+    { id: 1009, lesson: 10, kanji: "猫", kana: "ねこ", english: "cat" },
+    { id: 1010, lesson: 10, kanji: "", kana: "パンダ", english: "panda" },
+    { id: 1011, lesson: 10, kanji: "象", kana: "ぞう", english: "elephant" },
+    { id: 1012, lesson: 10, kanji: "木", kana: "き", english: "tree" },
+    { id: 1013, lesson: 10, kanji: "物", kana: "もの", english: "thing" },
+    { id: 1014, lesson: 10, kanji: "电池", kana: "でんち", english: "battery" },
+    { id: 1015, lesson: 10, kanji: "箱", kana: "はこ", english: "box" },
+    { id: 1016, lesson: 10, kanji: "", kana: "スイッチ", english: "switch" },
+    { id: 1017, lesson: 10, kanji: "冷蔵庫", kana: "れいぞうこ", english: "refrigerator" },
+    { id: 1018, lesson: 10, kanji: "", kana: "テーブル", english: "table" },
+    { id: 1019, lesson: 10, kanji: "", kana: "ベッド", english: "bed" },
+    { id: 1020, lesson: 10, kanji: "棚", kana: "たな", english: "shelf" },
+    { id: 1021, lesson: 10, kanji: "", kana: "ドア", english: "door" },
+    { id: 1022, lesson: 10, kanji: "窓", kana: "まど", english: "window" },
+    { id: 1023, lesson: 10, kanji: "", kana: "ポスト", english: "postbox, mailbox" },
+    { id: 1024, lesson: 10, kanji: "", kana: "ビル", english: "building" },
+    { id: 1025, lesson: 10, kanji: "", kana: "コンビニ", english: "convenience store" },
+    { id: 1026, lesson: 10, kanji: "公园", kana: "こうえん", english: "park" },
+    { id: 1027, lesson: 10, kanji: "喫茶店", kana: "きっさてん", english: "café, coffee shop" },
+    { id: 1028, lesson: 10, kanji: "～屋", kana: "～や", english: "~ shop, ~ store" },
+    { id: 1029, lesson: 10, kanji: "乗り場", kana: "のりば", english: "a fixed place to catch taxis, trains, etc." },
+    { id: 1030, lesson: 10, kanji: "県", kana: "けん", english: "prefecture" },
+    { id: 1031, lesson: 10, kanji: "上", kana: "うえ", english: "on, above, over" },
+    { id: 1032, lesson: 10, kanji: "下", kana: "した", english: "under, below, beneath" },
+    { id: 1033, lesson: 10, kanji: "前", kana: "まえ", english: "front, before" },
+    { id: 1034, lesson: 10, kanji: "後ろ", kana: "うしろ", english: "back, behind" },
+    { id: 1035, lesson: 10, kanji: "右", kana: "みぎ", english: "right [side]" },
+    { id: 1036, lesson: 10, kanji: "左", kana: "ひだり", english: "left [side]" },
+    { id: 1037, lesson: 10, kanji: "中", kana: "なか", english: "in, inside" },
+    { id: 1038, lesson: 10, kanji: "外", kana: "そと", english: "outside" },
+    { id: 1039, lesson: 10, kanji: "隣", kana: "となり", english: "next, next door" },
+    { id: 1040, lesson: 10, kanji: "近く", kana: "ちかく", english: "near, vicinity" },
+    { id: 1041, lesson: 10, kanji: "間", kana: "あいだ", english: "between, among" },
+    { id: 1042, lesson: 10, kanji: "～や～[など]", kana: "～や～[など]", english: "~, ~, and so on" },
+    { id: 1043, lesson: 10, kanji: "一番～", kana: "いちばん～", english: "the most ~ (ichiban ue: the top)" },
+    { id: 1044, lesson: 10, kanji: "", kana: "～段目", english: "the —th shelf" },
+    { id: 1045, lesson: 10, kanji: "[どうも]すみません", kana: "", english: "Thank you." },
+    { id: 1046, lesson: 10, kanji: "", kana: "チリソース", english: "chili sauce" },
+    { id: 1047, lesson: 10, kanji: "奥", kana: "おく", english: "the back, the innermost part" },
+
+    // 第11课 (Lesson 11)
+    { id: 1101, lesson: 11, kanji: "", kana: "います", english: "have [kodomo ga ~] (a child)" },
+    { id: 1102, lesson: 11, kanji: "", kana: "います", english: "stay, be [nihon ni ~] (in Japan)" },
+    { id: 1103, lesson: 11, kanji: "", kana: "かかります", english: "take (referring to time or money)" },
+    { id: 1104, lesson: 11, kanji: "休みます", kana: "やすみます", english: "take a day off [kaisha o ~] (work)" },
+    { id: 1105, lesson: 11, kanji: "一つ", kana: "ひとつ", english: "one (counting things)" },
+    { id: 1106, lesson: 11, kanji: "二つ", kana: "ふたつ", english: "two" },
+    { id: 1107, lesson: 11, kanji: "三つ", kana: "みっつ", english: "three" },
+    { id: 1108, lesson: 11, kanji: "四つ", kana: "よっつ", english: "four" },
+    { id: 1109, lesson: 11, kanji: "五つ", kana: "いつつ", english: "five" },
+    { id: 1110, lesson: 11, kanji: "六つ", kana: "むいっつ", english: "six" },
+    { id: 1111, lesson: 11, kanji: "七つ", kana: "ななつ", english: "seven" },
+    { id: 1112, lesson: 11, kanji: "八つ", kana: "やっつ", english: "eight" },
+    { id: 1113, lesson: 11, kanji: "九つ", kana: "ここのつ", english: "nine" },
+    { id: 1114, lesson: 11, kanji: "十", kana: "とお", english: "ten" },
+    { id: 1115, lesson: 11, kanji: "", kana: "いくつ", english: "how many" },
+    { id: 1116, lesson: 11, kanji: "一人", kana: "ひとり", english: "one person" },
+    { id: 1117, lesson: 11, kanji: "二人", kana: "ふたり", english: "two people" },
+    { id: 1118, lesson: 11, kanji: "～人", kana: "～にん", english: "—people" },
+    { id: 1119, lesson: 11, kanji: "～台", kana: "～だい", english: "counter for machines, cars, etc." },
+    { id: 1120, lesson: 11, kanji: "～枚", kana: "～まい", english: "counter for paper, stamps, etc." },
+    { id: 1121, lesson: 11, kanji: "～回", kana: "～かい", english: "—times" },
+    { id: 1122, lesson: 11, kanji: "", kana: "りんご", english: "apple" },
+    { id: 1123, lesson: 11, kanji: "", kana: "みかん", english: "mandarin orange" },
+    { id: 1124, lesson: 11, kanji: "", kana: "サンドイッチ", english: "sandwich" },
+    { id: 1125, lesson: 11, kanji: "", kana: "カレー[ライス]", english: "curry [and rice]" },
+    { id: 1126, lesson: 11, kanji: "", kana: "アイスクリーム", english: "ice cream" },
+    { id: 1127, lesson: 11, kanji: "切手", kana: "きって", english: "postage stamp" },
+    { id: 1128, lesson: 11, kanji: "葉書", kana: "はがき", english: "post card" },
+    { id: 1129, lesson: 11, kanji: "封筒", kana: "ふうとう", english: "envelope" },
+    { id: 1130, lesson: 11, kanji: "速達", kana: "そくたつ", english: "special delivery" },
+    { id: 1131, lesson: 11, kanji: "書留", kana: "かきとめ", english: "registered mail" },
+    { id: 1132, lesson: 11, kanji: "", kana: "エアメール", english: "airmail (koukuubin)" },
+    { id: 1133, lesson: 11, kanji: "船便", kana: "ふなびん", english: "sea mail" },
+    { id: 1134, lesson: 11, kanji: "両親", kana: "りょうしん", english: "parents" },
+    { id: 1135, lesson: 11, kanji: "兄弟", kana: "きょうだい", english: "brothers and sisters" },
+    { id: 1136, lesson: 11, kanji: "兄", kana: "あに", english: "(my) elder brother" },
+    { id: 1137, lesson: 11, kanji: "お兄さん", kana: "おにいさん", english: "(someone else's) elder brother" },
+    { id: 1138, lesson: 11, kanji: "姉", kana: "あね", english: "(my) elder sister" },
+    { id: 1139, lesson: 11, kanji: "お姉さん", kana: "おねえさん", english: "(someone else's) elder sister" },
+    { id: 1140, lesson: 11, kanji: "弟", kana: "おとうと", english: "(my) younger brother" },
+    { id: 1141, lesson: 11, kanji: "弟さん", kana: "おとうとさん", english: "(someone else's) younger brother" },
+    { id: 1142, lesson: 11, kanji: "妹", kana: "いもうと", english: "(my) younger sister" },
+    { id: 1143, lesson: 11, kanji: "妹さん", kana: "いもうとさん", english: "(someone else's) younger sister" },
+    { id: 1144, lesson: 11, kanji: "外国", kana: "がいこく", english: "foreign country" },
+    { id: 1145, lesson: 11, kanji: "～時間", kana: "～じかん", english: "—hours" },
+    { id: 1146, lesson: 11, kanji: "～週間", kana: "～しゅうかん", english: "—weeks" },
+    { id: 1147, lesson: 11, kanji: "～か月", kana: "～かげつ", english: "—months" },
+    { id: 1148, lesson: 11, kanji: "～年", kana: "～ねん", english: "—years" },
+    { id: 1149, lesson: 11, kanji: "～ぐらい", kana: "～ぐらい", english: "about ~" },
+    { id: 1150, lesson: 11, kanji: "", kana: "どのくらい", english: "how long" },
+    { id: 1151, lesson: 11, kanji: "全部で", kana: "ぜんぶで", english: "in total" },
+    { id: 1152, lesson: 11, kanji: "", kana: "みんな", english: "all, everything, everyone" },
+    { id: 1153, lesson: 11, kanji: "～だけ", kana: "～だけ", english: "only ~" },
+    { id: 1154, lesson: 11, kanji: "", kana: "いらっしゃいませ", english: "Welcome. / May I help you? (greeting to a customer)" },
+
+    // 第12课 (Lesson 12)
+    { id: 1201, lesson: 12, kanji: "簡単[な]", kana: "かんたん[な]", english: "easy, simple" },
+    { id: 1202, lesson: 12, kanji: "近い", kana: "ちかい", english: "near" },
+    { id: 1203, lesson: 12, kanji: "遠い", kana: "とおい", english: "far" },
+    { id: 1204, lesson: 12, kanji: "速い/早い", kana: "はやい", english: "fast, early" },
+    { id: 1205, lesson: 12, kanji: "遅い", kana: "おそい", english: "slow, late" },
+    { id: 1206, lesson: 12, kanji: "多い", kana: "おおい", english: "many [people], much [hito ga ~]" },
+    { id: 1207, lesson: 12, kanji: "少ない", kana: "すくない", english: "few [people], a little [hito ga ~]" },
+    { id: 1208, lesson: 12, kanji: "暖かい/温かい", kana: "あたたかい", english: "warm" },
+    { id: 1209, lesson: 12, kanji: "涼しい", kana: "すずしい", english: "cool" },
+    { id: 1210, lesson: 12, kanji: "甘い", kana: "あまい", english: "sweet" },
+    { id: 1211, lesson: 12, kanji: "辛い", kana: "からい", english: "hot (taste), spicy, salty" },
+    { id: 1212, lesson: 12, kanji: "重い", kana: "おもい", english: "heavy" },
+    { id: 1213, lesson: 12, kanji: "軽い", kana: "かるい", english: "light (of weight)" },
+    { id: 1214, lesson: 12, kanji: "", kana: "いい", english: "prefer [coffee ga ~]" },
+    { id: 1215, lesson: 12, kanji: "季节", kana: "きせつ", english: "season" },
+    { id: 1216, lesson: 12, kanji: "春", kana: "はる", english: "spring" },
+    { id: 1217, lesson: 12, kanji: "夏", kana: "なつ", english: "summer" },
+    { id: 1218, lesson: 12, kanji: "秋", kana: "あき", english: "autumn, fall" },
+    { id: 1219, lesson: 12, kanji: "冬", kana: "ふゆ", english: "winter" },
+    { id: 1220, lesson: 12, kanji: "天气", kana: "てんき", english: "weather" },
+    { id: 1221, lesson: 12, kanji: "雨", kana: "あめ", english: "rain, rainy" },
+    { id: 1222, lesson: 12, kanji: "雪", kana: "ゆき", english: "snow, snowy" },
+    { id: 1223, lesson: 12, kanji: "曇り", kana: "くもり", english: "cloudy" },
+    { id: 1224, lesson: 12, kanji: "", kana: "ホテル", english: "hotel" },
+    { id: 1225, lesson: 12, kanji: "空港", kana: "くうこう", english: "airport" },
+    { id: 1226, lesson: 12, kanji: "海", kana: "うみ", english: "sea, ocean" },
+    { id: 1227, lesson: 12, kanji: "世界", kana: "せかい", english: "world" },
+    { id: 1228, lesson: 12, kanji: "", kana: "パーティー", english: "party" },
+    { id: 1229, lesson: 12, kanji: "[お]祭り", kana: "[お]まつり", english: "festival" },
+    { id: 1230, lesson: 12, kanji: "", kana: "すき焼き", english: "sukiyaki (beef and vegetable hot pot)" },
+    { id: 1231, lesson: 12, kanji: "刺身", kana: "さしみ", english: "sashimi (sliced raw fish)" },
+    { id: 1232, lesson: 12, kanji: "[お]寿司", kana: "[お]すし", english: "sushi" },
+    { id: 1233, lesson: 12, kanji: "天ぷら", kana: "てんぷら", english: "tempura" },
+    { id: 1234, lesson: 12, kanji: "豚肉", kana: "ぶたにく", english: "pork" },
+    { id: 1235, lesson: 12, kanji: "鶏肉", kana: "とりにく", english: "chicken" },
+    { id: 1236, lesson: 12, kanji: "牛肉", kana: "ぎゅうにく", english: "beef" },
+    { id: 1237, lesson: 12, kanji: "", kana: "レモン", english: "lemon" },
+    { id: 1238, lesson: 12, kanji: "生け花", kana: "いけばな", english: "flower arrangement" },
+    { id: 1239, lesson: 12, kanji: "紅葉", kana: "もみじ", english: "maple, red leaves of autumn" },
+    { id: 1240, lesson: 12, kanji: "", kana: "どちら", english: "which one (of two things)" },
+    { id: 1241, lesson: 12, kanji: "", kana: "どちらも", english: "both" },
+    { id: 1242, lesson: 12, kanji: "", kana: "ずっと", english: "by far" },
+    { id: 1243, lesson: 12, kanji: "初めて", kana: "はじめて", english: "for the first time" },
+    { id: 1244, lesson: 12, kanji: "", kana: "ただいま", english: "I'm home." },
+    { id: 1245, lesson: 12, kanji: "お帰りなさい", kana: "おかえりなさい", english: "Welcome home." },
+    { id: 1246, lesson: 12, kanji: "", kana: "すごいですね", english: "That's amazing." },
+    { id: 1247, lesson: 12, kanji: "", kana: "でも", english: "but" },
+    { id: 1248, lesson: 12, kanji: "疲れました", kana: "つかれました", english: "I'm tired." },
+
+    // 第13课 (Lesson 13)
+    { id: 1301, lesson: 13, kanji: "遊びます", kana: "あそびます", english: "enjoy oneself, play" },
+    { id: 1302, lesson: 13, kanji: "泳ぎます", kana: "およぎます", english: "swim" },
+    { id: 1303, lesson: 13, kanji: "迎えます", kana: "むかえます", english: "go to meet, welcome" },
+    { id: 1304, lesson: 13, kanji: "疲れます", kana: "つかれます", english: "get tired" },
+    { id: 1305, lesson: 13, kanji: "出します", kana: "だします", english: "send [tegami o ~] (a letter)" },
+    { id: 1306, lesson: 13, kanji: "入ります", kana: "はいります", english: "enter [kissaten ni ~] (a coffee shop)" },
+    { id: 1307, lesson: 13, kanji: "出ます", kana: "でます", english: "go out [of a coffee shop]" },
+    { id: 1308, lesson: 13, kanji: "結婚します", kana: "けっこんします", english: "marry, get married" },
+    { id: 1309, lesson: 13, kanji: "買い物します", kana: "かいものします", english: "do shopping" },
+    { id: 1310, lesson: 13, kanji: "食事します", kana: "しょくじします", english: "have a meal, dine" },
+    { id: 1311, lesson: 13, kanji: "散歩します", kana: "さんぽします", english: "take a walk [kouen o ~] (in a park)" },
+    { id: 1312, lesson: 13, kanji: "大変[な]", kana: "たいへん[な]", english: "hard, tough, severe, awful" },
+    { id: 1313, lesson: 13, kanji: "欲しい", kana: "ほしい", english: "want (something)" },
+    { id: 1314, lesson: 13, kanji: "寂しい", kana: "さびしい", english: "lonely" },
+    { id: 1315, lesson: 13, kanji: "広い", kana: "ひろい", english: "wide, spacious" },
+    { id: 1316, lesson: 13, kanji: "狭い", kana: "せまい", english: "narrow, small (room, etc.)" },
+    { id: 1317, lesson: 13, kanji: "市役所", kana: "しやくしょ", english: "municipal office, city hall" },
+    { id: 1318, lesson: 13, kanji: "", kana: "プール", english: "swimming pool" },
+    { id: 1319, lesson: 13, kanji: "川", kana: "かわ", english: "river" },
+    { id: 1320, lesson: 13, kanji: "经济", kana: "けいざい", english: "economy" },
+    { id: 1321, lesson: 13, kanji: "美術", kana: "びじゅつ", english: "fine arts" },
+    { id: 1322, lesson: 13, kanji: "釣り", kana: "つり", english: "fishing" },
+    { id: 1323, lesson: 13, kanji: "", kana: "スキー", english: "skiing" },
+    { id: 1324, lesson: 13, kanji: "会议", kana: "かいぎ", english: "meeting, conference" },
+    { id: 1325, lesson: 13, kanji: "登録", kana: "とうろく", english: "registration" },
+    { id: 1326, lesson: 13, kanji: "週末", kana: "しゅうまつ", english: "weekend" },
+    { id: 1327, lesson: 13, kanji: "～ごろ", kana: "～ごろ", english: "about ~ (time)" },
+    { id: 1328, lesson: 13, kanji: "何か", kana: "なにか", english: "something" },
+    { id: 1329, lesson: 13, kanji: "どこか", kana: "どこか", english: "somewhere, some place" },
+    { id: 1330, lesson: 13, kanji: "お腹が空きました", kana: "おなかがすきました", english: "I'm hungry." },
+    { id: 1331, lesson: 13, kanji: "お腹が一杯です", kana: "おなかがいっぱいです", english: "I'm full." },
+    { id: 1332, lesson: 13, kanji: "喉が乾きました", kana: "のどがかわきました", english: "I'm thirsty." },
+    { id: 1333, lesson: 13, kanji: "", kana: "そうですね", english: "I agree with you." },
+    { id: 1334, lesson: 13, kanji: "", kana: "そうしましょう", english: "Let's do that. (agreeing to suggestion)" },
+    { id: 1335, lesson: 13, kanji: "ご注文は", kana: "ごちゅうもんは", english: "May I take your order?" },
+    { id: 1336, lesson: 13, kanji: "牛丼", kana: "ぎゅうどん", english: "bowl of rice topped with beef" },
+    { id: 1337, lesson: 13, kanji: "少々お待ちください", kana: "しょうしょうおまちください", english: "Please wait a moment." },
+    { id: 1338, lesson: 13, kanji: "別々に", kana: "べつべつに", english: "separately" },
+
+    // 第14课 (Lesson 14)
+    { id: 1401, lesson: 14, kanji: "", kana: "つけます", english: "turn on" },
+    { id: 1402, lesson: 14, kanji: "消します", kana: "けします", english: "turn off" },
+    { id: 1403, lesson: 14, kanji: "開けます", kana: "あけます", english: "open" },
+    { id: 1404, lesson: 14, kanji: "闭めます", kana: "しめます", english: "close, shut" },
+    { id: 1405, lesson: 14, kanji: "急ぎます", kana: "いそぎます", english: "hurry" },
+    { id: 1406, lesson: 14, kanji: "待ちます", kana: "まちます", english: "wait" },
+    { id: 1407, lesson: 14, kanji: "止めます", kana: "とめます", english: "stop, park" },
+    { id: 1408, lesson: 14, kanji: "曲がります", kana: "まがります", english: "turn [migi e ~] (to the right)" },
+    { id: 1409, lesson: 14, kanji: "持ちます", kana: "もちます", english: "hold" },
+    { id: 1410, lesson: 14, kanji: "取ります", kana: "とります", english: "take, pass" },
+    { id: 1411, lesson: 14, kanji: "手伝います", kana: "てつだいます", english: "help (with a task)" },
+    { id: 1412, lesson: 14, kanji: "呼びます", kana: "よびます", english: "call" },
+    { id: 1413, lesson: 14, kanji: "話します", kana: "はなします", english: "speak, talk" },
+    { id: 1414, lesson: 14, kanji: "見せます", kana: "みせます", english: "show" },
+    { id: 1415, lesson: 14, kanji: "教えます", kana: "おしえます", english: "tell [an address]" },
+    { id: 1416, lesson: 14, kanji: "始めます", kana: "はじめます", english: "start, begin" },
+    { id: 1417, lesson: 14, kanji: "降ります", kana: "ふります", english: "rain [ame ga ~]" },
+    { id: 1418, lesson: 14, kanji: "", kana: "コピーします", english: "copy" },
+    { id: 1419, lesson: 14, kanji: "", kana: "エアコン", english: "air conditioner" },
+    { id: 1420, lesson: 14, kanji: "", kana: "パスポート", english: "passport" },
+    { id: 1421, lesson: 14, kanji: "名前", kana: "なまえ", english: "name" },
+    { id: 1422, lesson: 14, kanji: "住所", kana: "じゅうしょ", english: "address" },
+    { id: 1423, lesson: 14, kanji: "地図", kana: "ちず", english: "map" },
+    { id: 1424, lesson: 14, kanji: "塩", kana: "しお", english: "salt" },
+    { id: 1425, lesson: 14, kanji: "砂糖", kana: "さとう", english: "sugar" },
+    { id: 1426, lesson: 14, kanji: "読み方", kana: "よみかた", english: "how to read, way of reading" },
+    { id: 1427, lesson: 14, kanji: "～方", kana: "～かた", english: "how to ~, way of ~ing" },
+    { id: 1428, lesson: 14, kanji: "", kana: "ゆっくり", english: "slowly, leisurely" },
+    { id: 1429, lesson: 14, kanji: "", kana: "すぐ", english: "immediately" },
+    { id: 1430, lesson: 14, kanji: "", kana: "また", english: "again" },
+    { id: 1431, lesson: 14, kanji: "", kana: "あとで", english: "later" },
+    { id: 1432, lesson: 14, kanji: "", kana: "もう少し", english: "a little more" },
+    { id: 1433, lesson: 14, kanji: "", kana: "もう～", english: "~ more, another ~" },
+    { id: 1434, lesson: 14, kanji: "", kana: "いいですよ", english: "Sure. / Certainly." },
+    { id: 1435, lesson: 14, kanji: "", kana: "さあ", english: "right (used when encouraging)" },
+    { id: 1436, lesson: 14, kanji: "", kana: "あれ？", english: "Oh! (in surprise or wonder)" },
+    { id: 1437, lesson: 14, kanji: "信号", kana: "しんごう", english: "traffic light" },
+    { id: 1438, lesson: 14, kanji: "", kana: "まっすぐ", english: "straight" },
+    { id: 1439, lesson: 14, kanji: "これでお願いします", kana: "これでおねがいします", english: "I'd like to pay with this." },
+    { id: 1440, lesson: 14, kanji: "お釣り", kana: "おつり", english: "change" },
+
+    // 第15课 (Lesson 15)
+    { id: 1501, lesson: 15, kanji: "立ちます", kana: "たちます", english: "stand up" },
+    { id: 1502, lesson: 15, kanji: "座ります", kana: "すわります", english: "sit down" },
+    { id: 1503, lesson: 15, kanji: "使います", kana: "つかいます", english: "use" },
+    { id: 1504, lesson: 15, kanji: "置きます", kana: "おきます", english: "put" },
+    { id: 1505, lesson: 15, kanji: "作ります", kana: "つくります", english: "make, produce" },
+    { id: 1506, lesson: 15, kanji: "売ります", kana: "うります", english: "sell" },
+    { id: 1507, lesson: 15, kanji: "知ります", kana: "しります", english: "get to know" },
+    { id: 1508, lesson: 15, kanji: "住みます", kana: "すみます", english: "be going to live" },
+    { id: 1509, lesson: 15, kanji: "研究します", kana: "けんきゅうします", english: "do research" },
+    { id: 1510, lesson: 15, kanji: "知っています", kana: "しっています", english: "know" },
+    { id: 1511, lesson: 15, kanji: "住んでいます", kana: "すんでいます", english: "live [in Osaka]" },
+    { id: 1512, lesson: 15, kanji: "資料", kana: "しりょう", english: "materials, data" },
+    { id: 1513, lesson: 15, kanji: "", kana: "カタログ", english: "catalog" },
+    { id: 1514, lesson: 15, kanji: "時刻表", kana: "じこくひょう", english: "timetable" },
+    { id: 1515, lesson: 15, kanji: "服", kana: "ふく", english: "clothes" },
+    { id: 1516, lesson: 15, kanji: "製品", kana: "せいひん", english: "products" },
+    { id: 1517, lesson: 15, kanji: "", kana: "ソフト", english: "software" },
+    { id: 1518, lesson: 15, kanji: "専門", kana: "せんもん", english: "speciality, field of study" },
+    { id: 1519, lesson: 15, kanji: "歯医者", kana: "はいしゃ", english: "dentist" },
+    { id: 1520, lesson: 15, kanji: "床屋", kana: "とこや", english: "barber" },
+    { id: 1521, lesson: 15, kanji: "", kana: "プレイガイド", english: "(theater) ticket agency" },
+    { id: 1522, lesson: 15, kanji: "独身", kana: "どくしん", english: "single, unmarried" },
+    { id: 1523, lesson: 15, kanji: "思い出します", kana: "おもいだします", english: "remember, recollect" },
+    { id: 1524, lesson: 15, kanji: "", kana: "いらっしゃいます", english: "be (honorific equivalent of imasu)" },
+    { id: 1525, lesson: 15, kanji: "日本橋", kana: "にっぽんばし", english: "Nipponbashi (shopping district in Osaka)" },
+
+    // 第16课 (Lesson 16)
+    { id: 1601, lesson: 16, kanji: "乗ります", kana: "のります", english: "ride, get on [a train]" },
+    { id: 1602, lesson: 16, kanji: "降ります", kana: "おります", english: "get off [a train]" },
+    { id: 1603, lesson: 16, kanji: "乗り換えます", kana: "のりかえます", english: "change (trains, etc.)" },
+    { id: 1604, lesson: 16, kanji: "浴びます", kana: "あびます", english: "take [a shower]" },
+    { id: 1605, lesson: 16, kanji: "入れます", kana: "いれます", english: "put in, insert" },
+    { id: 1606, lesson: 16, kanji: "出します", kana: "だします", english: "take out, withdraw" },
+    { id: 1607, lesson: 16, kanji: "下ろします", kana: "おろします", english: "withdraw [money]" },
+    { id: 1608, lesson: 16, kanji: "入ります", kana: "はいります", english: "enter [university]" },
+    { id: 1609, lesson: 16, kanji: "出ます", kana: "でます", english: "graduate from [university]" },
+    { id: 1610, lesson: 16, kanji: "押します", kana: "おします", english: "push, press" },
+    { id: 1611, lesson: 16, kanji: "飲みます", kana: "のみます", english: "drink alcohol" },
+    { id: 1612, lesson: 16, kanji: "始めます", kana: "はじめます", english: "start, begin" },
+    { id: 1613, lesson: 16, kanji: "見学します", kana: "けんがくします", english: "tour, visit a place to study it" },
+    { id: 1614, lesson: 16, kanji: "电话します", kana: "でんわします", english: "phone" },
+    { id: 1615, lesson: 16, kanji: "若い", kana: "わかい", english: "young" },
+    { id: 1616, lesson: 16, kanji: "長い", kana: "ながい", english: "long" },
+    { id: 1617, lesson: 16, kanji: "短い", kana: "みじかい", english: "short" },
+    { id: 1618, lesson: 16, kanji: "明るい", kana: "あかるい", english: "bright, light" },
+    { id: 1619, lesson: 16, kanji: "暗い", kana: "くらい", english: "dark" },
+    { id: 1620, lesson: 16, kanji: "背が高い", kana: "せがたかい", english: "tall (referring to person)" },
+    { id: 1621, lesson: 16, kanji: "頭がいい", kana: "あたまがいい", english: "clever, smart" },
+    { id: 1622, lesson: 16, kanji: "体", kana: "からだ", english: "body" },
+    { id: 1623, lesson: 16, kanji: "頭", kana: "あたま", english: "head" },
+    { id: 1624, lesson: 16, kanji: "髪", kana: "かみ", english: "hair" },
+    { id: 1625, lesson: 16, kanji: "顔", kana: "かお", english: "face" },
+    { id: 1626, lesson: 16, kanji: "目", kana: "め", english: "eye" },
+    { id: 1627, lesson: 16, kanji: "耳", kana: "みみ", english: "ear" },
+    { id: 1628, lesson: 16, kanji: "口", kana: "くち", english: "mouth" },
+    { id: 1629, lesson: 16, kanji: "歯", kana: "は", english: "tooth" },
+    { id: 1630, lesson: 16, kanji: "", kana: "おなか", english: "stomach" },
+    { id: 1631, lesson: 16, kanji: "足", kana: "あし", english: "leg, foot" },
+    { id: 1632, lesson: 16, kanji: "", kana: "サービス", english: "service" },
+    { id: 1633, lesson: 16, kanji: "", kana: "ジョギング", english: "jogging (~ o shimasu: jog)" },
+    { id: 1634, lesson: 16, kanji: "", kana: "シャワー", english: "shower" },
+    { id: 1635, lesson: 16, kanji: "緑", kana: "みどり", english: "green, greenery" },
+    { id: 1636, lesson: 16, kanji: "[お]寺", kana: "[お]てら", english: "Buddhist temple" },
+    { id: 1637, lesson: 16, kanji: "神社", kana: "じんじゃ", english: "Shinto shrine" },
+    { id: 1638, lesson: 16, kanji: "留学生", kana: "りゅうがくせい", english: "foreign student" },
+    { id: 1639, lesson: 16, kanji: "～番", kana: "～ばん", english: "number ~" },
+    { id: 1640, lesson: 16, kanji: "", kana: "どうやって", english: "how, in what way" },
+    { id: 1641, lesson: 16, kanji: "", kana: "どの～", english: "which ~ (for three or more)" },
+    { id: 1642, lesson: 16, kanji: "", kana: "どれ", english: "which one (of three or more)" },
+    { id: 1643, lesson: 16, kanji: "", kana: "お引き出しですか", english: "Are you making a withdrawal?" },
+    { id: 1644, lesson: 16, kanji: "", kana: "まず", english: "first of all" },
+    { id: 1645, lesson: 16, kanji: "次に", kana: "つぎに", english: "next, as a next step" },
+    { id: 1646, lesson: 16, kanji: "", kana: "キャッシュカード", english: "cash dispensing card" },
+    { id: 1647, lesson: 16, kanji: "暗証番号", kana: "あんしょうばんごう", english: "personal identification number, PIN" },
+    { id: 1648, lesson: 16, kanji: "金额", kana: "きんがく", english: "amount of money" },
+    { id: 1649, lesson: 16, kanji: "確認", kana: "かくにん", english: "confirmation (~ shimasu: confirm)" },
+    { id: 1650, lesson: 16, kanji: "", kana: "ボタン", english: "button" },
+
+    // 第17课 (Lesson 17)
+    { id: 1701, lesson: 17, kanji: "覚えます", kana: "おぼえます", english: "memorize" },
+    { id: 1702, lesson: 17, kanji: "忘れます", kana: "わすれます", english: "forget" },
+    { id: 1703, lesson: 17, kanji: "", kana: "なくします", english: "lose" },
+    { id: 1704, lesson: 17, kanji: "出します", kana: "だします", english: "hand in [a report]" },
+    { id: 1705, lesson: 17, kanji: "払ります", kana: "はらいます", english: "pay" },
+    { id: 1706, lesson: 17, kanji: "返します", kana: "かえします", english: "give back, return" },
+    { id: 1707, lesson: 17, kanji: "出かけます", kana: "でかけます", english: "go out" },
+    { id: 1708, lesson: 17, kanji: "脱ぎます", kana: "ぬぎます", english: "take off (clothes, shoes, etc.)" },
+    { id: 1709, lesson: 17, kanji: "持って行きます", kana: "もっていきます", english: "take (something)" },
+    { id: 1710, lesson: 17, kanji: "持って来ます", kana: "もってきます", english: "bring (something)" },
+    { id: 1711, lesson: 17, kanji: "心配します", kana: "しんぱいします", english: "worry" },
+    { id: 1712, lesson: 17, kanji: "残業します", kana: "ざんぎょうします", english: "work overtime" },
+    { id: 1713, lesson: 17, kanji: "出張します", kana: "しゅっちょうします", english: "go on a business trip" },
+    { id: 1714, lesson: 17, kanji: "飲みます", kana: "のみます", english: "take [medicine]" },
+    { id: 1715, lesson: 17, kanji: "入ります", kana: "はいります", english: "take [a bath]" },
+    { id: 1716, lesson: 17, kanji: "大切[な]", kana: "たいせつ[な]", english: "important, precious" },
+    { id: 1717, lesson: 17, kanji: "大丈夫[な]", kana: "だいじょうぶ[な]", english: "all right" },
+    { id: 1718, lesson: 17, kanji: "危ない", kana: "あぶない", english: "dangerous" },
+    { id: 1719, lesson: 17, kanji: "問題", kana: "もんだい", english: "question, problem, trouble" },
+    { id: 1720, lesson: 17, kanji: "答え", kana: "こたえ", english: "answer" },
+    { id: 1721, lesson: 17, kanji: "禁煙", kana: "きんえん", english: "no smoking" },
+    { id: 1722, lesson: 17, kanji: "[健康]保険証", kana: "[けんこう]ほけんしょう", english: "[health] insurance card" },
+    { id: 1723, lesson: 17, kanji: "風邪", kana: "かぜ", english: "cold, flu" },
+    { id: 1724, lesson: 17, kanji: "熱", kana: "ねつ", english: "fever" },
+    { id: 1725, lesson: 17, kanji: "病気", kana: "びょうき", english: "illness, disease" },
+    { id: 1726, lesson: 17, kanji: "薬", kana: "くすり", english: "medicine" },
+    { id: 1727, lesson: 17, kanji: "[お]ふろ", kana: "", english: "bath" },
+    { id: 1728, lesson: 17, kanji: "上着", kana: "うわぎ", english: "jacket, outerwear" },
+    { id: 1729, lesson: 17, kanji: "下着", kana: "したぎ", english: "underwear" },
+    { id: 1730, lesson: 17, kanji: "先生", kana: "せんせい", english: "doctor (used when addressing a medical doctor)" },
+    { id: 1731, lesson: 17, kanji: "2, 3日", kana: "にさんにち", english: "a few days" },
+    { id: 1732, lesson: 17, kanji: "", kana: "～までに", english: "before ~, by ~ (time limit)" },
+    { id: 1733, lesson: 17, kanji: "", kana: "ですから", english: "therefore, so" },
+    { id: 1734, lesson: 17, kanji: "", kana: "どうしましたか", english: "What's the matter?" },
+    { id: 1735, lesson: 17, kanji: "[～が]痛いです", kana: "[～が]いたいです", english: "(I) have a pain [in my ~]." },
+    { id: 1736, lesson: 17, kanji: "喉", kana: "のど", english: "throat" },
+    { id: 1737, lesson: 17, kanji: "お大事に", kana: "おだいじに", english: "Take care of yourself. (said to people who are ill)" },
+
+    // 第18课 (Lesson 18)
+    { id: 1801, lesson: 18, kanji: "", kana: "できます", english: "be able to, can" },
+    { id: 1802, lesson: 18, kanji: "洗います", kana: "あらいます", english: "wash" },
+    { id: 1803, lesson: 18, kanji: "弾きます", kana: "ひきます", english: "play [stringed instrument or piano, etc.]" },
+    { id: 1804, lesson: 18, kanji: "歌います", kana: "うたいます", english: "sing" },
+    { id: 1805, lesson: 18, kanji: "集めます", kana: "あつめます", english: "collect, gather" },
+    { id: 1806, lesson: 18, kanji: "捨てます", kana: "すてます", english: "throw away" },
+    { id: 1807, lesson: 18, kanji: "換えます", kana: "かえます", english: "exchange, change" },
+    { id: 1808, lesson: 18, kanji: "運転します", kana: "うんてんします", english: "drive" },
+    { id: 1809, lesson: 18, kanji: "予約します", kana: "よやくします", english: "reserve, book" },
+    { id: 1810, lesson: 18, kanji: "見学します", kana: "けんがくします", english: "visit some place for study" },
+    { id: 1811, lesson: 18, kanji: "", kana: "ピアノ", english: "piano" },
+    { id: 1812, lesson: 18, kanji: "～メートル", kana: "", english: "—meter" },
+    { id: 1813, lesson: 18, kanji: "国際～", kana: "こくさい～", english: "International ~" },
+    { id: 1814, lesson: 18, kanji: "現金", kana: "げんきん", english: "cash" },
+    { id: 1815, lesson: 18, kanji: "趣味", kana: "しゅみ", english: "hobby" },
+    { id: 1816, lesson: 18, kanji: "日記", kana: "にっき", english: "diary" },
+    { id: 1817, lesson: 18, kanji: "[お]祈り", kana: "[お]いのり", english: "prayer (~ o shimasu: pray)" },
+    { id: 1818, lesson: 18, kanji: "課長", kana: "かちょう", english: "section chief" },
+    { id: 1819, lesson: 18, kanji: "部长", kana: "ぶちょう", english: "department chief" },
+    { id: 1820, lesson: 18, kanji: "社長", kana: "しゃちょう", english: "president of a company" },
+    { id: 1821, lesson: 18, kanji: "动物", kana: "どうぶつ", english: "animal" },
+    { id: 1822, lesson: 18, kanji: "馬", kana: "うま", english: "horse" },
+    { id: 1823, lesson: 18, kanji: "", kana: "へえ", english: "Really! (expressing surprise)" },
+    { id: 1824, lesson: 18, kanji: "", kana: "なかなか", english: "not easily (used with negatives)" },
+    { id: 1825, lesson: 18, kanji: "", kana: "ぜひ", english: "by all means" },
+    { id: 1826, lesson: 18, kanji: "牧場", kana: "ぼくじょう", english: "ranch, stock farm" },
+
+    // 第19课 (Lesson 19)
+    { id: 1901, lesson: 19, kanji: "登ります", kana: "のぼります", english: "climb [a mountain]" },
+    { id: 1902, lesson: 19, kanji: "泊まります", kana: "とまります", english: "stay [at a hotel]" },
+    { id: 1903, lesson: 19, kanji: "掃除します", kana: "そうじします", english: "clean (a room)" },
+    { id: 1904, lesson: 19, kanji: "洗濯します", kana: "せんたくします", english: "wash (clothes)" },
+    { id: 1905, lesson: 19, kanji: "練習します", kana: "れんしゅうします", english: "practice" },
+    { id: 1906, lesson: 19, kanji: "", kana: "なります", english: "become" },
+    { id: 1907, lesson: 19, kanji: "眠い", kana: "ねむい", english: "sleepy" },
+    { id: 1908, lesson: 19, kanji: "強い", kana: "つよい", english: "strong" },
+    { id: 1909, lesson: 19, kanji: "弱い", kana: "よわい", english: "weak" },
+    { id: 1910, lesson: 19, kanji: "調子がいい", kana: "ちょうしがいい", english: "be in good condition" },
+    { id: 1911, lesson: 19, kanji: "調子が悪い", kana: "ちょうしがわるい", english: "be in bad condition" },
+    { id: 1912, lesson: 19, kanji: "調子", kana: "ちょうし", english: "condition" },
+    { id: 1913, lesson: 19, kanji: "", kana: "ゴルフ", english: "golf (~ o shimasu: play golf)" },
+    { id: 1914, lesson: 19, kanji: "相撲", kana: "すもう", english: "sumo wrestling" },
+    { id: 1915, lesson: 19, kanji: "", kana: "パチンコ", english: "pinball game" },
+    { id: 1916, lesson: 19, kanji: "お茶", kana: "おちゃ", english: "tea ceremony" },
+    { id: 1917, lesson: 19, kanji: "日", kana: "ひ", english: "day, date" },
+    { id: 1918, lesson: 19, kanji: "一度", kana: "いちど", english: "once" },
+    { id: 1919, lesson: 19, kanji: "一度も", kana: "いちども", english: "not once, never (used with negatives)" },
+    { id: 1920, lesson: 19, kanji: "", kana: "だんだん", english: "gradually" },
+    { id: 1921, lesson: 19, kanji: "", kana: "もうすぐ", english: "soon" },
+    { id: 1922, lesson: 19, kanji: "おかげさまで", kana: "", english: "Thank you (expressing gratitude for help)" },
+    { id: 1923, lesson: 19, kanji: "乾杯", kana: "かんぱい", english: "Bottoms up. / Cheers!" },
+    { id: 1924, lesson: 19, kanji: "実は", kana: "じつは", english: "actually, to tell the truth" },
+    { id: 1925, lesson: 19, kanji: "", kana: "ダイエット", english: "diet (~ o shimasu: go on a diet)" },
+    { id: 1926, lesson: 19, kanji: "何回も", kana: "なんかいも", english: "many times" },
+    { id: 1927, lesson: 19, kanji: "", kana: "しかし", english: "but, however" },
+    { id: 1928, lesson: 19, kanji: "無理[な]", kana: "むり[な]", english: "excessive, impossible" },
+    { id: 1929, lesson: 19, kanji: "体にいい", kana: "からだにいい", english: "good for one's health" },
+
+    // 第20课 (Lesson 20)
+    { id: 2001, lesson: 20, kanji: "要ります", kana: "いります", english: "need, require [a visa]" },
+    { id: 2002, lesson: 20, kanji: "調べます", kana: "しらべます", english: "check, investigate" },
+    { id: 2003, lesson: 20, kanji: "直します", kana: "なおします", english: "repair, correct" },
+    { id: 2004, lesson: 20, kanji: "修理します", kana: "しゅうりします", english: "repair" },
+    { id: 2005, lesson: 20, kanji: "电话します", kana: "でんわします", english: "phone" },
+    { id: 2006, lesson: 20, kanji: "僕", kana: "ぼく", english: "I (informal equivalent of watashi)" },
+    { id: 2007, lesson: 20, kanji: "君", kana: "きみ", english: "you (informal equivalent of anata)" },
+    { id: 2008, lesson: 20, kanji: "～君", kana: "～くん", english: "Mr. (informal equivalent of ~san)" },
+    { id: 2009, lesson: 20, kanji: "", kana: "うん", english: "yes (informal equivalent of hai)" },
+    { id: 2010, lesson: 20, kanji: "", kana: "ううん", english: "no (informal equivalent of iie)" },
+    { id: 2011, lesson: 20, kanji: "", kana: "サラリーマン", english: "salaried worker, office worker" },
+    { id: 2012, lesson: 20, kanji: "言葉", kana: "ことば", english: "word, language" },
+    { id: 2013, lesson: 20, kanji: "物価", kana: "ぶっか", english: "commodity prices" },
+    { id: 2014, lesson: 20, kanji: "着物", kana: "きもの", english: "kimono" },
+    { id: 2015, lesson: 20, kanji: "", kana: "ビザ", english: "visa" },
+    { id: 2016, lesson: 20, kanji: "始め", kana: "はじめ", english: "the beginning" },
+    { id: 2017, lesson: 20, kanji: "終わり", kana: "おわり", english: "the end" },
+    { id: 2018, lesson: 20, kanji: "", kana: "こっち", english: "this way, this place (informal equivalent of kochira)" },
+    { id: 2019, lesson: 20, kanji: "", kana: "そっち", english: "that way, that place (informal equivalent of sochira)" },
+    { id: 2020, lesson: 20, kanji: "", kana: "あっち", english: "that way, that place over there (informal equivalent of achira)" },
+    { id: 2021, lesson: 20, kanji: "", kana: "どっち", english: "which one (of two), which way, where" },
+    { id: 2022, lesson: 20, kanji: "この間", kana: "このあいだ", english: "the other day" },
+    { id: 2023, lesson: 20, kanji: "みんなで", kana: "", english: "all together" },
+    { id: 2024, lesson: 20, kanji: "", kana: "～けど", english: "~, but (informal equivalent of ga)" },
+    { id: 2025, lesson: 20, kanji: "良かったら", kana: "よかったら", english: "if you like" },
+    { id: 2026, lesson: 20, kanji: "", kana: "いろいろ", english: "various" },
+
+    // 第21课 (Lesson 21)
+    { id: 2101, lesson: 21, kanji: "思います", kana: "おもいます", english: "think" },
+    { id: 2102, lesson: 21, kanji: "言います", kana: "いいます", english: "say" },
+    { id: 2103, lesson: 21, kanji: "足ります", kana: "たります", english: "be enough, be sufficient" },
+    { id: 2104, lesson: 21, kanji: "勝ちます", kana: "かちます", english: "win" },
+    { id: 2105, lesson: 21, kanji: "负けます", kana: "まけます", english: "lose, be beaten" },
+    { id: 2106, lesson: 21, kanji: "", kana: "あります", english: "[a festival] be held, take place" },
+    { id: 2107, lesson: 21, kanji: "役に立ちます", kana: "やくにたちます", english: "be useful" },
+    { id: 2108, lesson: 21, kanji: "", kana: "むだ[な]", english: "wasteful" },
+    { id: 2109, lesson: 21, kanji: "不便[な]", kana: "ふべん[な]", english: "inconvenient" },
+    { id: 2110, lesson: 21, kanji: "同じ", kana: "おなじ", english: "the same" },
+    { id: 2111, lesson: 21, kanji: "", kana: "すごい", english: "awful, great (expresses astonishment)" },
+    { id: 2112, lesson: 21, kanji: "首相", kana: "しゅしょう", english: "prime minister" },
+    { id: 2113, lesson: 21, kanji: "大統領", kana: "だいとうりょう", english: "president" },
+    { id: 2114, lesson: 21, kanji: "政治", kana: "せいじ", english: "politics" },
+    { id: 2115, lesson: 21, kanji: "", kana: "ニュース", english: "news" },
+    { id: 2116, lesson: 21, kanji: "", kana: "スピーチ", english: "speech (~ o shimasu: make a speech)" },
+    { id: 2117, lesson: 21, kanji: "試合", kana: "しあい", english: "game, match" },
+    { id: 2118, lesson: 21, kanji: "", kana: "アルバイト", english: "side job (~ o shimasu: work part time)" },
+    { id: 2119, lesson: 21, kanji: "意见", kana: "いけん", english: "opinion" },
+    { id: 2120, lesson: 21, kanji: "[お]話", kana: "[お]はなし", english: "talk, speech, story" },
+    { id: 2121, lesson: 21, kanji: "", kana: "ユーモア", english: "humor" },
+    { id: 2122, lesson: 21, kanji: "", kana: "むだ", english: "waste" },
+    { id: 2123, lesson: 21, kanji: "", kana: "デザイン", english: "design" },
+    { id: 2124, lesson: 21, kanji: "交通", kana: "こうつう", english: "transportation, traffic" },
+    { id: 2125, lesson: 21, kanji: "", kana: "ラッシュ", english: "rush hour" },
+    { id: 2126, lesson: 21, kanji: "最近", kana: "さいきん", english: "recently, these days" },
+    { id: 2127, lesson: 21, kanji: "", kana: "たぶん", english: "probably, perhaps, maybe" },
+    { id: 2128, lesson: 21, kanji: "", kana: "きっと", english: "surely" },
+    { id: 2129, lesson: 21, kanji: "本当に", kana: "ほんとうに", english: "really" },
+    { id: 2130, lesson: 21, kanji: "", kana: "そんなに", english: "not so much (used with negatives)" },
+    { id: 2131, lesson: 21, kanji: "", kana: "～について", english: "about ~, concerning ~" },
+    { id: 2132, lesson: 21, kanji: "しかたがありません", kana: "", english: "There is no other choice." },
+    { id: 2133, lesson: 21, kanji: "しばらくですね", kana: "", english: "It's been a long time. (Long time no see)" },
+    { id: 2134, lesson: 21, kanji: "", kana: "～でも飲みませんか", english: "How about drinking ~ or something?" },
+    { id: 2135, lesson: 21, kanji: "見ないと", kana: "みないと", english: "I've got to watch it." },
+    { id: 2136, lesson: 21, kanji: "", kana: "もちろん", english: "of course" },
+
+    // 第22课 (Lesson 22)
+    { id: 2201, lesson: 22, kanji: "着ます", kana: "きます", english: "put on [a shirt, etc.]" },
+    { id: 2202, lesson: 22, kanji: "", kana: "はきます", english: "put on [shoes, trousers, etc.]" },
+    { id: 2203, lesson: 22, kanji: "", kana: "かぶります", english: "put on [a hat, etc]" },
+    { id: 2204, lesson: 22, kanji: "", kana: "かけます", english: "put on [glasses]" },
+    { id: 2205, lesson: 22, kanji: "生まれます", kana: "うまれます", english: "be born" },
+    { id: 2206, lesson: 22, kanji: "", kana: "コート", english: "coat" },
+    { id: 2207, lesson: 22, kanji: "", kana: "スーツ", english: "suit" },
+    { id: 2208, lesson: 22, kanji: "", kana: "セーター", english: "sweater" },
+    { id: 2209, lesson: 22, kanji: "帽子", kana: "ぼうし", english: "hat, cap" },
+    { id: 2210, lesson: 22, kanji: "眼镜", kana: "めがね", english: "glasses" },
+    { id: 2211, lesson: 22, kanji: "", kana: "よく", english: "often" },
+    { id: 2212, lesson: 22, kanji: "おめでとうございます", kana: "", english: "Congratulations." },
+    { id: 2213, lesson: 22, kanji: "", kana: "こちら", english: "this (polite equivalent of kore)" },
+    { id: 2214, lesson: 22, kanji: "家賃", kana: "やちん", english: "house rent" },
+    { id: 2215, lesson: 22, kanji: "", kana: "うーん", english: "Let me see." },
+    { id: 2216, lesson: 22, kanji: "", kana: "ダイニングキチン", english: "kitchen with a dining area" },
+    { id: 2217, lesson: 22, kanji: "和室", kana: "わしつ", english: "Japanese-style room" },
+    { id: 2218, lesson: 22, kanji: "押し入れ", kana: "おしいれ", english: "Japanese-style closet" },
+    { id: 2219, lesson: 22, kanji: "布団", kana: "ふとん", english: "Japanese-style mattress and quilt" },
+    { id: 2220, lesson: 22, kanji: "", kana: "アパート", english: "apartment" },
+
+    // 第23课 (Lesson 23)
+    { id: 2301, lesson: 23, kanji: "聞きます", kana: "ききます", english: "ask [sensei ni ~] (the teacher)" },
+    { id: 2302, lesson: 23, kanji: "回します", kana: "まわします", english: "turn" },
+    { id: 2303, lesson: 23, kanji: "引きます", kana: "ひきます", english: "pull" },
+    { id: 2304, lesson: 23, kanji: "変えます", kana: "かえます", english: "change" },
+    { id: 2305, lesson: 23, kanji: "触ります", kana: "さわります", english: "touch [doa ni ~] (a door)" },
+    { id: 2306, lesson: 23, kanji: "出ます", kana: "でます", english: "[change] come out [otsuri ga ~]" },
+    { id: 2307, lesson: 23, kanji: "動きます", kana: "うごきます", english: "[a watch] move, work [tokei ga ~]" },
+    { id: 2308, lesson: 23, kanji: "歩きます", kana: "あるきます", english: "walk [michi o ~] (along a road)" },
+    { id: 2309, lesson: 23, kanji: "渡ります", kana: "わたります", english: "cross [hashi o ~] (a bridge)" },
+    { id: 2310, lesson: 23, kanji: "気をつけます", kana: "きをつけます", english: "pay attention [kuruma ni ~], take care" },
+    { id: 2311, lesson: 23, kanji: "引っ越しします", kana: "ひっこしします", english: "move (house)" },
+    { id: 2312, lesson: 23, kanji: "電気屋", kana: "でんきや", english: "electrical appliance store staff" },
+    { id: 2313, lesson: 23, kanji: "～屋", kana: "～や", english: "person of ~ shop" },
+    { id: 2314, lesson: 23, kanji: "", kana: "サイズ", english: "size" },
+    { id: 2315, lesson: 23, kanji: "音", kana: "おと", english: "sound" },
+    { id: 2316, lesson: 23, kanji: "机械", kana: "きかい", english: "machine" },
+    { id: 2317, lesson: 23, kanji: "", kana: "つまみ", english: "knob" },
+    { id: 2318, lesson: 23, kanji: "故障", kana: "こしょう", english: "breakdown (~ shimasu: break down)" },
+    { id: 2319, lesson: 23, kanji: "道", kana: "みち", english: "road, way" },
+    { id: 2320, lesson: 23, kanji: "交差点", kana: "こうさてん", english: "crossroad" },
+    { id: 2321, lesson: 23, kanji: "信号", kana: "しんごう", english: "traffic light" },
+    { id: 2322, lesson: 23, kanji: "角", kana: "かど", english: "corner" },
+    { id: 2323, lesson: 23, kanji: "桥", kana: "はし", english: "bridge" },
+    { id: 2324, lesson: 23, kanji: "駐車場", kana: "ちゅうしゃじょう", english: "parking lot" },
+    { id: 2325, lesson: 23, kanji: "～目", kana: "～め", english: "the —th (indicating order)" },
+    { id: 2326, lesson: 23, kanji: "正月", kana: "しょうがつ", english: "New Year's Day" },
+    { id: 2327, lesson: 23, kanji: "建物", kana: "たてもの", english: "building" },
+    { id: 2328, lesson: 23, kanji: "外国人登録証", kana: "がいこくじんとうろくしょう", english: "alien registration card" },
+
+    // 第24课 (Lesson 24)
+    { id: 2401, lesson: 24, kanji: "", kana: "くれます", english: "give (me)" },
+    { id: 2402, lesson: 24, kanji: "直します", kana: "なおします", english: "repair, correct" },
+    { id: 2403, lesson: 24, kanji: "連れて行きます", kana: "つれていきます", english: "take (someone)" },
+    { id: 2404, lesson: 24, kanji: "連れて来ます", kana: "つれてきます", english: "bring (someone)" },
+    { id: 2405, lesson: 24, kanji: "送ります", kana: "おくります", english: "escort [someone], go with" },
+    { id: 2406, lesson: 24, kanji: "紹介します", kana: "しょうかいします", english: "introduce" },
+    { id: 2407, lesson: 24, kanji: "案内します", kana: "あんないします", english: "show around, show the way" },
+    { id: 2408, lesson: 24, kanji: "说明します", kana: "せつめいします", english: "explain" },
+    { id: 2409, lesson: 24, kanji: "", kana: "いれます", english: "make [coffee ga ~]" },
+    { id: 2410, lesson: 24, kanji: "おじいさん", kana: "", english: "grandfather, old man" },
+    { id: 2411, lesson: 24, kanji: "おばあさん", kana: "", english: "grandmother, old woman" },
+    { id: 2412, lesson: 24, kanji: "準備", kana: "じゅんび", english: "preparation (~ o shimasu: prepare)" },
+    { id: 2413, lesson: 24, kanji: "引っ越し", kana: "ひっこし", english: "moving out (~ o shimasu: move out)" },
+    { id: 2414, lesson: 24, kanji: "[お]菓子", kana: "[お]かし", english: "sweets, snacks" },
+    { id: 2415, lesson: 24, kanji: "", kana: "ホームステイ", english: "homestay" },
+    { id: 2416, lesson: 24, kanji: "全部", kana: "ぜんぶ", english: "all" },
+    { id: 2417, lesson: 24, kanji: "自分で", kana: "じぶんで", english: "by oneself" },
+    { id: 2418, lesson: 24, kanji: "他に", kana: "ほかに", english: "besides" },
+
+    // 第25课 (Lesson 25)
+    { id: 2501, lesson: 25, kanji: "考えます", kana: "かんがえます", english: "think, consider" },
+    { id: 2502, lesson: 25, kanji: "着きます", kana: "つきます", english: "arrive [eki ni ~] (at the station)" },
+    { id: 2503, lesson: 25, kanji: "留学します", kana: "りゅうがくします", english: "study abroad" },
+    { id: 2504, lesson: 25, kanji: "取ります", kana: "とります", english: "grow old [toshi o ~]" },
+    { id: 2505, lesson: 25, kanji: "田舎", kana: "いなか", english: "countryside, hometown" },
+    { id: 2506, lesson: 25, kanji: "大使館", kana: "たいしかん", english: "embassy" },
+    { id: 2507, lesson: 25, kanji: "", kana: "グループ", english: "group" },
+    { id: 2508, lesson: 25, kanji: "", kana: "チャンス", english: "chance" },
+    { id: 2509, lesson: 25, kanji: "亿", kana: "おく", english: "hundred million" },
+    { id: 2510, lesson: 25, kanji: "", kana: "もし", english: "if ~" },
+    { id: 2511, lesson: 25, kanji: "", kana: "いくら", english: "however ~, even if ~" },
+    { id: 2512, lesson: 25, kanji: "転勤", kana: "てんきん", english: "be transferred to another office" },
+    { id: 2513, lesson: 25, kanji: "", kana: "こと", english: "thing, matter" },
+    { id: 2514, lesson: 25, kanji: "一杯飲みましょう", kana: "いっぱいのみましょう", english: "Let's have a drink together." },
+    { id: 2515, lesson: 25, kanji: "いろいろお世話になりました", kana: "", english: "Thank you for everything you have done for me." },
+    { id: 2516, lesson: 25, kanji: "頑張ります", kana: "がんばります", english: "do one's best" },
+    { id: 2517, lesson: 25, kanji: "どうぞお元気で", kana: "", english: "Best of luck. (said when expecting long separation)" },
+
+    // 附录：日期 (Dates)
+    { id: 9901, lesson: "附录", kanji: "一日", kana: "ついたち", english: "1st day of month" },
+    { id: 9902, lesson: "附录", kanji: "二日", kana: "ふつか", english: "2nd, two days" },
+    { id: 9903, lesson: "附录", kanji: "三日", kana: "みっか", english: "3rd, three days" },
+    { id: 9904, lesson: "附录", kanji: "四日", kana: "よっか", english: "4th, four days" },
+    { id: 9905, lesson: "附录", kanji: "五日", kana: "いつか", english: "5th, five days" },
+    { id: 9906, lesson: "附录", kanji: "六日", kana: "むいか", english: "6th, six days" },
+    { id: 9907, lesson: "附录", kanji: "七日", kana: "なのか", english: "7th, seven days" },
+    { id: 9908, lesson: "附录", kanji: "八日", kana: "ようか", english: "8th, eight days" },
+    { id: 9909, lesson: "附录", kanji: "九日", kana: "ここのか", english: "9th, nine days" },
+    { id: 9910, lesson: "附录", kanji: "十日", kana: "とおか", english: "10th, ten days" },
+    { id: 9911, lesson: "附录", kanji: "十四日", kana: "じゅうよっか", english: "14th, fourteen days" },
+    { id: 9912, lesson: "附录", kanji: "二十日", kana: "はつか", english: "20th, twenty days" },
+    { id: 9913, lesson: "附录", kanji: "二十四日", kana: "にじゅうよっか", english: "24th, twenty-four days" },
+
+    // 附录：月份 (Months)
+    { id: 9801, lesson: "附录", kanji: "一月", kana: "いちがつ", english: "January" },
+    { id: 9802, lesson: "附录", kanji: "二月", kana: "にがつ", english: "February" },
+    { id: 9803, lesson: "附录", kanji: "三月", kana: "さんがつ", english: "March" },
+    { id: 9804, lesson: "附录", kanji: "四月", kana: "しがつ", english: "April" },
+    { id: 9805, lesson: "附录", kanji: "五月", kana: "ごがつ", english: "May" },
+    { id: 9806, lesson: "附录", kanji: "六月", kana: "ろくがつ", english: "June" },
+    { id: 9807, lesson: "附录", kanji: "七月", kana: "しちがつ", english: "July" },
+    { id: 9808, lesson: "附录", kanji: "八月", kana: "はちがつ", english: "August" },
+    { id: 9809, lesson: "附录", kanji: "九月", kana: "くがつ", english: "September" },
+    { id: 9810, lesson: "附录", kanji: "十月", kana: "じゅうがつ", english: "October" },
+    { id: 9811, lesson: "附录", kanji: "十一月", kana: "じゅういちがつ", english: "November" },
+    { id: 9812, lesson: "附录", kanji: "十二月", kana: "じゅうにがつ", english: "December" },
+
+    // 附录：星期 (Days of Week)
+    { id: 9701, lesson: "附录", kanji: "月曜日", kana: "げつようび", english: "Monday (Moon)" },
+    { id: 9702, lesson: "附录", kanji: "火曜日", kana: "かようび", english: "Tuesday (Fire)" },
+    { id: 9703, lesson: "附录", kanji: "水曜日", kana: "すいようび", english: "Wednesday (Water)" },
+    { id: 9704, lesson: "附录", kanji: "木曜日", kana: "もくようび", english: "Thursday (Wood)" },
+    { id: 9705, lesson: "附录", kanji: "金曜日", kana: "きんようび", english: "Friday (Gold/Metal)" },
+    { id: 9706, lesson: "附录", kanji: "土曜日", kana: "どようび", english: "Saturday (Earth)" },
+    { id: 9707, lesson: "附录", kanji: "日曜日", kana: "にちようび", english: "Sunday (Sun)" }
+];
+
+
+        const SRS_INTERVALS = [0, 1, 2, 4, 7, 15, 30, 60];
+        const DEFAULT_STATS = { streak: 0, lastDate: null, mastery: {}, history: [] };
+        const DEFAULT_SETTINGS = { dailyGoal: 20, rangeStart: 1, rangeEnd: 25, autoSubmit: true }; 
+
+        // --- 辅助逻辑 ---
+        const getValidTypes = (word) => {
+            const hasKanji = word.kanji && word.kanji.length > 0 && word.kanji !== word.kana;
+            return hasKanji ? ['0', '1', '2'] : ['0', '1'];
+        };
+
+        const normalizeJapanese = (text) => text ? text.toString().toLowerCase().replace(/[～~－\- \[\]\s\(\)]/g, "").trim() : "";
+        const normalizeEnglish = (text) => text ? text.toString().toLowerCase().replace(/'s\b/g, "").replace(/[^a-z0-9]/g, " ").trim() : "";
+
+        // --- 1. 首页 ---
+        const Home = ({ tasks, settings, stats, setView }) => {
+            const totalGoal = (settings.dailyGoal || 20) * 2.5; 
+            const progress = settings.dailyGoal > 0 ? Math.min(100, (tasks.doneToday / totalGoal) * 100) : 0;
+            
+            return (
+                <div className="p-6 list-padding-bottom animate-slide-up safe-area-top w-full">
+                    <header className="flex justify-between items-center mb-8 mt-4">
+                        <div>
+                            <h1 className="text-2xl font-black text-slate-800">日语背单词 <span className="text-blue-600">V1.0Beta</span></h1>
+                            <p className="text-slate-400 text-[10px] font-bold tracking-widest uppercase mt-1">By JdohkrX, Gemini3.0</p>
+                        </div>
+                        <div className="text-right">
+                            <span className="bg-orange-50 text-orange-500 px-3 py-1 rounded-full text-xs font-bold border border-orange-100 block mb-1 shadow-sm">
+                                <i className="fa-solid fa-fire mr-1"></i> {stats.streak} 天
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-0.5 rounded">L{settings.rangeStart || 1} - L{settings.rangeEnd || 25}</span>
+                        </div>
+                    </header>
+
+                    <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-[32px] p-8 text-white shadow-xl card-shadow relative overflow-hidden mb-8 transform transition-all active:scale-[0.98]">
+                        <div className="relative z-10">
+                            <p className="opacity-80 text-xs font-bold mb-2 uppercase tracking-wider">今日待学 (所有题型)</p>
+                            <div className="flex items-end gap-2 mb-6">
+                                <span className="text-6xl font-black leading-none tracking-tight">{tasks.queue.length}</span>
+                                <span className="text-sm font-bold opacity-60 mb-2">个任务</span>
+                            </div>
+                            <div className="bg-black/20 h-3 rounded-full overflow-hidden mb-6 backdrop-blur-sm">
+                                <div className="bg-white h-full rounded-full transition-all duration-1000 ease-out" style={{width: `${progress}%`}}></div>
+                            </div>
+                            <button onClick={() => setView('study')} className="w-full bg-white text-blue-700 py-4 rounded-2xl font-black text-lg shadow-lg btn-press">
+                                开始背诵 <i className="fa-solid fa-arrow-right ml-2"></i>
+                            </button>
+                        </div>
+                        <i className="fa-solid fa-shapes absolute -right-6 -bottom-6 text-9xl text-white/10 rotate-12"></i>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center justify-center">
+                            <span className="text-3xl font-black text-slate-800">{tasks.masteredCount}</span>
+                            <span className="text-xs text-slate-400 font-bold uppercase mt-1">完全掌握</span>
+                        </div>
+                        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center justify-center">
+                            <span className="text-3xl font-black text-green-500">{Object.keys(stats.mastery).length}</span>
+                            <span className="text-xs text-slate-400 font-bold uppercase mt-1">学习中单词</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 2. 学习 (修复 Type 2 判定逻辑) ---
+        const Study = ({ tasks, settings, setSettings, onComplete, onExit }) => {
+            const sessionQueue = useMemo(() => tasks.queue, []);
+            const [idx, setIdx] = useState(0);
+            const [mode, setMode] = useState('card');
+            const [input, setInput] = useState('');
+            const [feedback, setFeedback] = useState(null);
+            
+            const [options, setOptions] = useState([]);
+            const inputRef = useRef(null);
+            const task = sessionQueue[idx];
+
+            useEffect(() => {
+                if (mode === 'quiz-input' && inputRef.current) {
+                    setTimeout(() => {
+                        inputRef.current?.focus();
+                        inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 50);
+                }
+            }, [mode]);
+
+            const generateOptions = useCallback((correctWord) => {
+                const opts = [correctWord];
+                const pool = FULL_VOCAB.filter(w => w.id !== correctWord.id);
+                while (opts.length < 4 && pool.length > 0) {
+                    const randIdx = Math.floor(Math.random() * pool.length);
+                    opts.push(pool[randIdx]);
+                    pool.splice(randIdx, 1);
+                }
+                return opts.sort(() => Math.random() - 0.5);
+            }, []);
+
+            if (!task) {
+                return (
+                    <div className="h-screen flex flex-col items-center justify-center bg-white p-8 text-center animate-slide-up safe-area-top">
+                        <div className="w-24 h-24 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-4xl mb-6 shadow-lg"><i className="fa-solid fa-check"></i></div>
+                        <h2 className="text-3xl font-black text-slate-800 mb-2">任务完成！</h2>
+                        <button onClick={onExit} className="w-full max-w-xs px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl btn-press">返回首页</button>
+                    </div>
+                );
+            }
+
+            const quizType = parseInt(task.type);
+
+            // V1.0Beta 核心判定修复
+            const checkInputAnswer = () => {
+                if (feedback) return;
+                
+                const userJp = normalizeJapanese(input);
+                const kana = normalizeJapanese(task.kana);
+                const kanji = normalizeJapanese(task.kanji || '');
+                const romaji = normalizeJapanese(wanakana.toRomaji(task.kana));
+                
+                let isCorrect = false;
+                if (userJp.length >= 1) {
+                    if (quizType === 2) {
+                        // Type 2 (读音测试): 必须输入假名或罗马音。禁止输入汉字。
+                        // 即使输入的汉字和题目一样，也算错（或者不处理）。
+                        // 这里我们只匹配 kana 和 romaji。
+                        if (userJp === kana || userJp === romaji) {
+                            isCorrect = true;
+                        }
+                    } else {
+                        // Type 1 (英->日): 汉字、假名、罗马音都算对
+                        if (userJp === kana || userJp === kanji || userJp === romaji) {
+                            isCorrect = true;
+                        }
+                    }
+                }
+                finalizeResult(isCorrect);
+            };
+
+            const checkOptionAnswer = (selectedWord) => {
+                if (feedback) return;
+                const isCorrect = selectedWord.id === task.id;
+                finalizeResult(isCorrect);
+            };
+
+            const finalizeResult = (isCorrect) => {
+                setFeedback(isCorrect ? 'correct' : 'wrong');
+                onComplete(task.id, task.type, isCorrect);
+                const delay = (isCorrect && (quizType === 0 || settings.autoSubmit)) ? 800 : 1800;
+                setTimeout(() => {
+                    setFeedback(null);
+                    setInput('');
+                    setMode('card');
+                    setIdx(prev => prev + 1);
+                }, delay);
+            };
+
+            const startQuiz = () => {
+                if (quizType === 0) {
+                    setOptions(generateOptions(task));
+                    setMode('quiz-choice');
+                } else {
+                    setMode('quiz-input');
+                }
+            };
+
+            useEffect(() => {
+                if (mode === 'quiz-input' && settings.autoSubmit && !feedback && input.length > 0) {
+                    const userJp = normalizeJapanese(input);
+                    const kana = normalizeJapanese(task.kana);
+                    const kanji = normalizeJapanese(task.kanji || '');
+                    const romaji = normalizeJapanese(wanakana.toRomaji(task.kana));
+                    
+                    if (userJp.length >= 1) {
+                        if (quizType === 2) {
+                            // 自动提交逻辑也要同步：只在匹配到假名/罗马音时提交
+                            if (userJp === kana || userJp === romaji) checkInputAnswer();
+                        } else {
+                            if (userJp === kana || userJp === kanji || userJp === romaji) checkInputAnswer();
+                        }
+                    }
+                }
+            }, [input, mode, settings.autoSubmit, feedback]);
+
+            const handleKeyDown = (e) => { 
+                if (e.key === 'Enter' && !e.nativeEvent.isComposing) { 
+                    e.preventDefault(); 
+                    checkInputAnswer(); 
+                } 
+            };
+
+            return (
+                <div className="h-full flex flex-col safe-area-top overflow-hidden">
+                    <div className="px-6 pt-4 pb-2 flex items-center gap-4">
+                        <button onClick={onExit} className="w-10 h-10 flex items-center justify-center bg-white rounded-full text-slate-400 shadow-sm btn-press"><i className="fa-solid fa-xmark"></i></button>
+                        <div className="flex-1 h-3 bg-slate-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-500 transition-all duration-300" style={{width: `${((idx) / sessionQueue.length) * 100}%`}}></div>
+                        </div>
+                        <span className="text-xs font-bold text-slate-400 font-mono w-10 text-right">{idx + 1}/{sessionQueue.length}</span>
+                        {quizType !== 0 && (
+                            <button onClick={() => setSettings(s => ({...s, autoSubmit: !s.autoSubmit}))} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all btn-press ${settings.autoSubmit ? 'bg-yellow-400 text-white shadow-md' : 'bg-slate-200 text-slate-400'}`}><i className="fa-solid fa-bolt"></i></button>
+                        )}
+                    </div>
+
+                    <div className="flex-1 p-6 flex flex-col overflow-y-auto w-full pb-24">
+                        {mode === 'card' ? (
+                            /* 卡片模式 */
+                            <div className="flex-1 bg-white rounded-[40px] shadow-xl p-8 pb-12 flex flex-col items-center text-center relative overflow-hidden animate-slide-up mb-6">
+                                <div className="flex-1 flex flex-col items-center justify-center w-full">
+                                    <ruby className="ruby-font font-black mb-10 text-slate-800 tracking-wider">
+                                        {task.kanji || task.kana} <rt className="text-lg">{task.kanji ? task.kana : ''}</rt>
+                                    </ruby>
+                                    <p className="text-3xl text-blue-600 font-bold leading-relaxed px-4 mb-8">{task.english}</p>
+                                    <div className="mt-4 px-4 py-2 bg-slate-100 rounded-xl text-sm font-bold text-slate-400">
+                                        {quizType === 0 ? '选择题: 日 -> 英' : (quizType === 1 ? '拼写: 英 -> 日' : '拼写: 读音测试')}
+                                    </div>
+                                </div>
+                                <div className="w-full mt-auto pt-8">
+                                    <button onClick={startQuiz} className="w-full py-5 bg-slate-900 text-white rounded-3xl font-black text-xl shadow-xl btn-press tracking-widest">
+                                        记住了，去测试
+                                    </button>
+                                </div>
+                            </div>
+                        ) : mode === 'quiz-choice' ? (
+                            /* 选择题模式 */
+                            <div className="flex-1 flex flex-col">
+                                <div className="bg-white rounded-[32px] shadow-lg p-8 mb-6 text-center animate-slide-up">
+                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">请选择正确意思</div>
+                                    <div className="text-5xl font-black text-slate-800">{task.kanji || task.kana}</div>
+                                    {task.kanji && <div className="text-xl font-bold text-slate-400 mt-2">{task.kana}</div>}
+                                </div>
+                                <div className="grid grid-cols-1 gap-3 animate-slide-up">
+                                    {options.map((opt, i) => (
+                                        <button 
+                                            key={i}
+                                            onClick={() => checkOptionAnswer(opt)}
+                                            disabled={!!feedback}
+                                            className={`p-5 rounded-2xl text-left font-bold text-lg shadow-sm transition-all border-2 
+                                                ${feedback ? 
+                                                    (opt.id === task.id ? 'bg-green-100 border-green-400 text-green-800' : 'bg-slate-50 border-transparent text-slate-300') : 
+                                                    'bg-white border-transparent text-slate-700 active:scale-95 active:bg-blue-50 hover:border-blue-200'
+                                                }`}
+                                        >
+                                            {opt.english}
+                                        </button>
+                                    ))}
+                                </div>
+                                {feedback === 'wrong' && (
+                                    <div className="mt-4 p-4 bg-red-100 text-red-600 rounded-2xl text-center font-bold animate-pulse">
+                                        正确答案是: {task.english}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            /* 填空模式 */
+                            <div className={`flex-1 rounded-[40px] shadow-xl p-6 flex flex-col relative overflow-hidden transition-colors duration-300 mb-4 ${feedback === 'correct' ? 'bg-green-50 ring-4 ring-green-100' : feedback === 'wrong' ? 'bg-red-50 ring-4 ring-red-100' : 'bg-white'}`}>
+                                <div className="flex-1 flex flex-col items-center justify-center w-full">
+                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-10 bg-slate-100 px-3 py-1 rounded-full">
+                                        {quizType === 1 ? "请输入日语/罗马音" : "请输入读音/罗马音 (禁用汉字)"}
+                                    </p>
+                                    <div className="mb-12 text-center w-full">
+                                        {quizType === 1 && <div className="text-3xl font-black text-blue-600 leading-tight px-2">{task.english}</div>}
+                                        {quizType === 2 && <div className="text-6xl font-black text-slate-800">{task.kanji}</div>}
+                                    </div>
+                                    <input ref={inputRef} autoFocus disabled={!!feedback} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck="false" className="w-full bg-transparent border-b-4 border-slate-200 focus:border-blue-500 text-center text-3xl font-black py-4 outline-none disabled:opacity-50 disabled:border-transparent transition-all placeholder:text-slate-300" placeholder="Romaji OK..." />
+                                    {feedback && (
+                                        <div className={`mt-8 text-center animate-slide-up w-full bg-white/50 p-4 rounded-2xl backdrop-blur-sm`}>
+                                            <div className={`text-2xl font-black mb-2 ${feedback === 'correct' ? 'text-green-600' : 'text-red-500'}`}>{feedback === 'correct' ? 'CORRECT!' : 'OOPS!'}</div>
+                                            <div className="text-sm text-slate-500 font-bold">正确答案: <br/><div className="text-slate-800 text-lg mt-1"><span>{task.kana} <span className="text-sm text-slate-400 ml-1">({wanakana.toRomaji(task.kana)})</span>{task.kanji && <div className="text-sm text-slate-400 mt-1">({task.kanji})</div>}</span></div></div>
+                                        </div>
+                                    )}
+                                </div>
+                                {!feedback && <button onClick={checkInputAnswer} className="w-full mt-4 bg-blue-600 text-white py-4 rounded-2xl font-black text-lg shadow-lg active:bg-blue-700 btn-press flex items-center justify-center gap-2">提交答案 <i className="fa-solid fa-check"></i></button>}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 3. 列表 ---
+        const List = ({ vocab }) => {
+            const [search, setSearch] = useState('');
+            const [filterLesson, setFilterLesson] = useState('all');
+            const lessons = useMemo(() => [...new Set(vocab.map(v => v.lesson))].sort((a,b) => (typeof a === 'string' ? 1 : a - b)), [vocab]);
+
+            const filtered = vocab.filter(v => 
+                (filterLesson === 'all' || v.lesson === filterLesson) &&
+                (v.kanji.includes(search) || v.kana.includes(search) || v.english.toLowerCase().includes(search.toLowerCase()))
+            );
+
+            const handleBlur = () => { setTimeout(() => { document.documentElement.scrollLeft = 0; document.body.scrollLeft = 0; }, 100); };
+
+            return (
+                <div className="safe-area-top h-full flex flex-col bg-slate-50 w-full overflow-hidden">
+                    <div className="sticky top-0 bg-slate-50 z-20 px-6 pt-6 pb-2 w-full">
+                        <h2 className="text-2xl font-black text-slate-800 mb-4">词库浏览</h2>
+                        <div className="relative w-full h-12 mb-4">
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 z-10 pointer-events-none"><i className="fa-solid fa-search text-lg"></i></div>
+                            <input className="w-full h-full bg-white border border-slate-200 rounded-2xl pl-12 pr-4 text-base font-bold text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm" placeholder="搜索..." value={search} onChange={e => setSearch(e.target.value)} onBlur={handleBlur} />
+                        </div>
+                        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 mask-linear w-full">
+                            <button onClick={() => setFilterLesson('all')} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-black uppercase transition-all ${filterLesson === 'all' ? 'bg-slate-800 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-400'}`}>全部</button>
+                            {lessons.map(l => (
+                                <button key={l} onClick={() => setFilterLesson(l)} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-black uppercase transition-all ${filterLesson === l ? 'bg-blue-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-400'}`}>L{l}</button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex-1 px-6 overflow-y-auto no-scrollbar space-y-3 pb-24 w-full">
+                        {filtered.slice(0, 100).map(word => (
+                            <div key={word.id} className="bg-white p-5 rounded-2xl border border-slate-100 flex justify-between items-center active:bg-slate-50 transition-colors shadow-sm w-full">
+                                <div>
+                                    <div className="text-xl font-black text-slate-800 leading-none mb-1.5">{word.kanji || word.kana}{word.kanji && <span className="text-sm text-slate-400 font-normal ml-2">{word.kana}</span>}</div>
+                                    <div className="text-sm text-slate-500 font-bold">{word.english}</div>
+                                </div>
+                                <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-1 rounded font-bold">L{word.lesson}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 4. 设置 ---
+        const Settings = ({ settings, setSettings, onReset }) => {
+            const handleNumChange = (key, val) => {
+                if (val === '') setSettings(s => ({ ...s, [key]: '' }));
+                else { const num = parseInt(val); if (!isNaN(num)) setSettings(s => ({ ...s, [key]: num })); }
+            };
+
+            return (
+                <div className="p-6 list-padding-bottom animate-slide-up safe-area-top w-full overflow-hidden">
+                    <h2 className="text-2xl font-black text-slate-800 mb-8 mt-4">设置</h2>
+                    <div className="bg-white rounded-[32px] shadow-sm overflow-hidden mb-8 border border-slate-50">
+                        <div className="p-6 border-b border-slate-50">
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center"><i className="fa-solid fa-bullseye"></i></div>
+                                <span className="text-base font-black text-slate-700">每次学习新词数 (Words)</span>
+                            </div>
+                            <div className="flex items-center justify-between bg-slate-50 rounded-xl p-2 gap-2">
+                                {[10, 20, 30, 50].map(num => (
+                                    <button key={num} onClick={() => setSettings(s => ({...s, dailyGoal: num}))} className={`flex-1 py-3 rounded-lg text-xs font-bold transition-all ${settings.dailyGoal === num ? 'bg-white text-blue-600 shadow-md' : 'text-slate-400'}`}>{num}</button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="p-6">
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center"><i className="fa-solid fa-book"></i></div>
+                                <span className="text-base font-black text-slate-700">课程范围 (L1-L25)</span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <input type="number" min="1" max="25" value={settings.rangeStart} onChange={e => handleNumChange('rangeStart', e.target.value)} className="flex-1 bg-slate-50 rounded-xl p-4 font-black text-center outline-none focus:ring-2 focus:ring-purple-200 text-lg" />
+                                <span className="text-slate-300 font-black">-</span>
+                                <input type="number" min="1" max="25" value={settings.rangeEnd} onChange={e => handleNumChange('rangeEnd', e.target.value)} className="flex-1 bg-slate-50 rounded-xl p-4 font-black text-center outline-none focus:ring-2 focus:ring-purple-200 text-lg" />
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button onClick={onReset} className="w-full py-5 text-red-400 font-black text-sm uppercase tracking-widest bg-red-50 rounded-3xl active:bg-red-100 btn-press"><i className="fa-solid fa-trash mr-2"></i> 重置所有数据</button>
+                    
+                    <div className="mt-8 text-center">
+                        <p className="text-slate-300 text-[10px] font-bold">日语背单词 V1.0Beta - By JdohkrX, Gemini3.0</p>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 5. 统计 ---
+        const Stats = ({ stats }) => {
+            const today = new Date();
+            const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+            return (
+                <div className="p-6 list-padding-bottom animate-slide-up safe-area-top w-full overflow-hidden">
+                    <h2 className="text-2xl font-black text-slate-800 mb-8 mt-4">进度统计</h2>
+                    <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm mb-6 w-full">
+                        <div className="flex justify-between items-center mb-6">
+                            <span className="font-bold text-slate-800 text-lg">{today.getMonth() + 1}月</span>
+                            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Activity Log</span>
+                        </div>
+                        <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:'6px', width:'100%'}}>
+                            {['S','M','T','W','T','F','S'].map(d => <div key={d} className="text-center text-[10px] font-black text-slate-300 mb-2">{d}</div>)}
+                            {[...Array(daysInMonth)].map((_, i) => {
+                                const day = i + 1;
+                                const dateStr = new Date(today.getFullYear(), today.getMonth(), day).toISOString().split('T')[0];
+                                const count = stats.history.find(h => h.date === dateStr)?.count || 0;
+                                let bgClass = 'bg-slate-50 text-slate-300';
+                                if (count > 0) bgClass = 'bg-blue-100 text-blue-600';
+                                if (count > 20) bgClass = 'bg-blue-500 text-white shadow-md shadow-blue-200';
+                                return <div key={day} className={`aspect-square rounded-xl flex items-center justify-center text-xs font-bold ${bgClass}`}>{day}</div>
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 主程序 ---
+        const App = () => {
+            const [view, setView] = useState('home');
+            const [stats, setStats] = useState(() => JSON.parse(localStorage.getItem('minna_app_v18')) || DEFAULT_STATS);
+            const [settings, setSettings] = useState(() => JSON.parse(localStorage.getItem('minna_settings_v18')) || DEFAULT_SETTINGS);
+
+            useEffect(() => localStorage.setItem('minna_app_v18', JSON.stringify(stats)), [stats]);
+            useEffect(() => localStorage.setItem('minna_settings_v18', JSON.stringify(settings)), [settings]);
+
+            const tasks = useMemo(() => {
+                const now = Date.now();
+                const today = new Date().toISOString().split('T')[0];
+                const rStart = settings.rangeStart === '' ? 1 : settings.rangeStart;
+                const rEnd = settings.rangeEnd === '' ? 25 : settings.rangeEnd;
+                
+                const scopedVocab = FULL_VOCAB.filter(w => {
+                    const l = w.lesson;
+                    if (typeof l === 'string') return true; 
+                    return l >= rStart && l <= rEnd;
+                });
+
+                let reviewQueue = [];
+                let masteredCount = 0;
+                let learnedWordIds = new Set();
+
+                Object.keys(stats.mastery).forEach(wid => {
+                    const word = FULL_VOCAB.find(w => w.id == wid);
+                    if (!word) return;
+                    const m = stats.mastery[wid];
+                    const types = getValidTypes(word);
+                    let isWordMastered = true;
+                    types.forEach(type => {
+                        const tm = m[type];
+                        if (tm) {
+                            if (tm.level < 7 && tm.nextReview <= now) reviewQueue.push({ ...word, type });
+                            if (tm.level < 7) isWordMastered = false;
+                        } else {
+                            isWordMastered = false; 
+                        }
+                    });
+                    if (isWordMastered) masteredCount++;
+                    learnedWordIds.add(Number(wid));
+                });
+
+                let newQueue = [];
+                const potentialNewWords = scopedVocab.filter(w => !learnedWordIds.has(w.id));
+                const wordsToLearn = potentialNewWords.slice(0, settings.dailyGoal || 20);
+                wordsToLearn.forEach(word => {
+                    const types = getValidTypes(word);
+                    types.forEach(type => newQueue.push({ ...word, type }));
+                });
+
+                const doneToday = stats.history.find(h => h.date === today)?.count || 0;
+                return { queue: [...reviewQueue, ...newQueue], doneToday, masteredCount, review: reviewQueue, news: newQueue };
+            }, [stats, settings]);
+
+            const handleComplete = useCallback((wordId, type, isCorrect) => {
+                const today = new Date().toISOString().split('T')[0];
+                const now = Date.now();
+                setStats(prev => {
+                    const wordMastery = prev.mastery[wordId] || {};
+                    const typeMastery = wordMastery[type] || { level: 0, nextReview: 0 };
+                    const nextLevel = isCorrect ? Math.min(7, typeMastery.level + 1) : Math.max(0, typeMastery.level - 1);
+                    const nextReview = now + SRS_INTERVALS[nextLevel] * 24 * 60 * 60 * 1000;
+                    const newMastery = { ...prev.mastery, [wordId]: { ...wordMastery, [type]: { level: nextLevel, nextReview } } };
+                    const newHistory = [...prev.history];
+                    const hIdx = newHistory.findIndex(h => h.date === today);
+                    if (hIdx > -1) newHistory[hIdx] = { ...newHistory[hIdx], count: newHistory[hIdx].count + 1 };
+                    else newHistory.push({ date: today, count: 1 });
+                    let newStreak = prev.streak;
+                    if (prev.lastDate !== today) {
+                        const y = new Date(); y.setDate(y.getDate() - 1);
+                        if (prev.lastDate === y.toISOString().split('T')[0]) newStreak++;
+                        else newStreak = 1;
+                    } else if (newStreak === 0) newStreak = 1;
+                    return { ...prev, mastery: newMastery, history: newHistory, streak: newStreak, lastDate: today };
+                });
+            }, []);
+
+            const handleReset = () => {
+                if (confirm("确定要删除所有进度和设置吗？")) {
+                    localStorage.clear();
+                    setStats(DEFAULT_STATS);
+                    setSettings(DEFAULT_SETTINGS);
+                    alert("数据已重置");
+                    setView('home');
+                }
+            };
+
+            const Nav = () => (
+                <div className="fixed bottom-0 left-0 right-0 glass-nav flex justify-around items-center z-50">
+                    <button onClick={() => setView('home')} className={`flex flex-col items-center w-16 btn-press ${view === 'home' ? 'text-blue-600 scale-110' : 'text-slate-300'}`}><i className="fa-solid fa-house text-2xl mb-1"></i><span className="text-[10px] font-bold">首页</span></button>
+                    <button onClick={() => setView('list')} className={`flex flex-col items-center w-16 btn-press ${view === 'list' ? 'text-blue-600 scale-110' : 'text-slate-300'}`}><i className="fa-solid fa-book-open text-2xl mb-1"></i><span className="text-[10px] font-bold">词库</span></button>
+                    <button onClick={() => setView('settings')} className={`flex flex-col items-center w-16 btn-press ${view === 'settings' ? 'text-blue-600 scale-110' : 'text-slate-300'}`}><i className="fa-solid fa-sliders text-2xl mb-1"></i><span className="text-[10px] font-bold">设置</span></button>
+                    <button onClick={() => setView('stats')} className={`flex flex-col items-center w-16 btn-press ${view === 'stats' ? 'text-blue-600 scale-110' : 'text-slate-300'}`}><i className="fa-solid fa-chart-pie text-2xl mb-1"></i><span className="text-[10px] font-bold">统计</span></button>
+                </div>
+            );
+
+            return (
+                <div className="max-w-md mx-auto min-h-screen bg-slate-50 relative shadow-2xl overflow-hidden w-full">
+                    {view === 'home' && <Home tasks={tasks} settings={settings} stats={stats} setView={setView} />}
+                    {view === 'list' && <List vocab={FULL_VOCAB} />}
+                    {view === 'study' && <Study tasks={tasks} settings={settings} setSettings={setSettings} onComplete={handleComplete} onExit={() => setView('home')} />}
+                    {view === 'settings' && <Settings settings={settings} setSettings={setSettings} onReset={handleReset} />}
+                    {view === 'stats' && <Stats stats={stats} />}
+                    {view !== 'study' && <Nav />}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
