@@ -26,3 +26,18 @@ A Japanese-words-learning program based on textbook series, "Minna no Nihongo", 
     Review planning based on Ebbinghaus' forgetting curve.
   7. Beta版本，部分功能未经测试，有待修复与优化。<br>
     Beta version, some functions have not been tested and need to be repaired and optimized.
+- **V1.01Beta**:
+  1. 优化了日译英测试，选项里只出现对应词性的混淆选项。
+  2. 单词测试顺序改为乱序。
+  3. 测试开始前添加了新词列表。
+  4. 修复了当日目标达成后白屏，没有目标完成和返回首页的按钮bug。
+  5. 增加了显示读音选择汉字的选择题。
+  6. 词库里每个单词的卡片包括了汉字、平假名、罗马音、英文释义。
+  7. 增加错词本与错词本复习功能。
+  8. 调整设置的位置到导航栏最右边。
+  9. 打卡日历的时区固定为UTC+8。
+  10. 修复了在进行英译日时，标点符号也被纳入到判断对错的范围之中的bug。
+  11. 增加了导入与导出数据功能。
+  12. 增加了已学习单词表与可视化掌握程度。
+  13. 当日目标达成后，可以选择继续学习。
+  14. Beta版本，部分功能未经测试，有待修复与优化。
