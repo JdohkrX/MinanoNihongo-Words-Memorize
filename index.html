@@ -7,7 +7,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#ffffff">
-    <title>日语背单词 V1.0Beta</title>
+    <title>日语背单词 V1.01Beta</title>
     
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🇯🇵</text></svg>">
 
@@ -16,6 +16,7 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/wanakana"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 
     <style>
@@ -39,8 +40,8 @@
             -webkit-overflow-scrolling: touch;
         }
         
-        .ruby-font { ruby-position: over; font-size: 2.5rem; line-height: 1.5; }
-        rt { font-size: 0.8rem; color: #64748b; font-weight: 500; }
+        .ruby-font { ruby-position: over; font-size: 2rem; line-height: 1.5; }
+        rt { font-size: 0.75rem; color: #64748b; font-weight: 500; }
         
         .glass-nav { 
             background: rgba(255, 255, 255, 0.95); 
@@ -74,7 +75,6 @@
         const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
         // --- 核心词汇数据 ---
-        // ⚠️ 每次更新文件时，请务必在此处覆盖您之前生成的完整单词数组 (FULL_VOCAB)
         const FULL_VOCAB = [
     // 第1课 (Lesson 1)
     { id: 101, lesson: 1, kanji: "私", kana: "わたし", english: "I" },
@@ -952,7 +952,7 @@
     { id: 2011, lesson: 20, kanji: "", kana: "サラリーマン", english: "salaried worker, office worker" },
     { id: 2012, lesson: 20, kanji: "言葉", kana: "ことば", english: "word, language" },
     { id: 2013, lesson: 20, kanji: "物価", kana: "ぶっか", english: "commodity prices" },
-    { id: 2014, lesson: 20, kanji: "着物", kana: "きもの", english: "kimono" },
+    { id: 2014, lesson: 20, kanji: "着物", kana: "きもの", english: "kimono (traditional Japanese attire)" },
     { id: 2015, lesson: 20, kanji: "", kana: "ビザ", english: "visa" },
     { id: 2016, lesson: 20, kanji: "始め", kana: "はじめ", english: "the beginning" },
     { id: 2017, lesson: 20, kanji: "終わり", kana: "おわり", english: "the end" },
@@ -1136,28 +1136,91 @@
 
 
         const SRS_INTERVALS = [0, 1, 2, 4, 7, 15, 30, 60];
-        const DEFAULT_STATS = { streak: 0, lastDate: null, mastery: {}, history: [] };
+        
+        const DEFAULT_STATS = { streak: 0, lastDate: null, mastery: {}, history: [], mistakes: [], todayNewWords: [] };
         const DEFAULT_SETTINGS = { dailyGoal: 20, rangeStart: 1, rangeEnd: 25, autoSubmit: true }; 
 
-        // --- 辅助逻辑 ---
+        // --- 工具函数 ---
+        const shuffle = (array) => {
+            let currentIndex = array.length, randomIndex;
+            const newArray = [...array];
+            while (currentIndex != 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [newArray[currentIndex], newArray[randomIndex]] = [newArray[randomIndex], newArray[currentIndex]];
+            }
+            return newArray;
+        };
+
+        const getTodayStr = () => {
+            const now = new Date();
+            const utc8Offset = 8 * 60; 
+            const localOffset = now.getTimezoneOffset();
+            const targetTime = new Date(now.getTime() + (utc8Offset + localOffset) * 60000);
+            return targetTime.toISOString().split('T')[0];
+        };
+
+        const hasKanji = (word) => word.kanji && word.kanji.length > 0 && word.kanji !== word.kana;
+
         const getValidTypes = (word) => {
-            const hasKanji = word.kanji && word.kanji.length > 0 && word.kanji !== word.kana;
-            return hasKanji ? ['0', '1', '2'] : ['0', '1'];
+            const hk = hasKanji(word);
+            return hk ? ['0', '1', '2', '3'] : ['0', '1'];
+        };
+
+        const getWordType = (word) => {
+            if (word.kana.endsWith('ます') || word.english.startsWith('to ')) return 'verb';
+            if (word.kana.endsWith('い') && word.english.includes('adj')) return 'i-adj';
+            if (word.kana.endsWith('な') || word.english.includes('adj')) return 'na-adj';
+            return 'noun';
         };
 
         const normalizeJapanese = (text) => text ? text.toString().toLowerCase().replace(/[～~－\- \[\]\s\(\)]/g, "").trim() : "";
-        const normalizeEnglish = (text) => text ? text.toString().toLowerCase().replace(/'s\b/g, "").replace(/[^a-z0-9]/g, " ").trim() : "";
+        const normalizeEnglish = (text) => text ? text.toString().toLowerCase().replace(/['".,?!]/g, "").replace(/'s\b/g, "").replace(/[^a-z0-9]/g, " ").trim() : "";
 
-        // --- 1. 首页 ---
-        const Home = ({ tasks, settings, stats, setView }) => {
-            const totalGoal = (settings.dailyGoal || 20) * 2.5; 
-            const progress = settings.dailyGoal > 0 ? Math.min(100, (tasks.doneToday / totalGoal) * 100) : 0;
+        const generateOptions = (correctWord, type) => {
+            if (!correctWord) return [];
+            const opts = [correctWord];
+            const targetType = getWordType(correctWord);
+            let pool = FULL_VOCAB.filter(w => w.id !== correctWord.id);
             
+            if (type === 0) { 
+                const sameTypePool = pool.filter(w => getWordType(w) === targetType);
+                if (sameTypePool.length >= 5) pool = sameTypePool; 
+            }
+            if (type === 3) { 
+                pool = pool.filter(w => hasKanji(w)); 
+            }
+
+            while (opts.length < 4 && pool.length > 0) {
+                const randIdx = Math.floor(Math.random() * pool.length);
+                opts.push(pool[randIdx]);
+                pool.splice(randIdx, 1);
+            }
+            return shuffle(opts);
+        };
+
+        const getTaskMode = (task) => {
+            if (!task) return 'card';
+            const t = parseInt(task.type);
+            return (t === 0 || t === 3) ? 'quiz-choice' : 'quiz-input';
+        };
+
+        // --- 组件 ---
+        const Home = ({ tasks, settings, stats, setView, startMistakeReview, onAddMore, onNavigateToList }) => {
+            const totalGoal = (settings.dailyGoal || 20); 
+            const learnedTodayCount = stats.todayNewWords ? stats.todayNewWords.length : 0;
+            const targetToday = settings.dailyGoal + (tasks.tempGoalAddon || 0);
+            
+            const progress = targetToday > 0 ? Math.min(100, (learnedTodayCount / targetToday) * 100) : 0;
+            const mistakeCount = stats.mistakes ? stats.mistakes.length : 0;
+
+            const isAllDone = tasks.queue.length === 0;
+
             return (
                 <div className="p-6 list-padding-bottom animate-slide-up safe-area-top w-full">
                     <header className="flex justify-between items-center mb-8 mt-4">
                         <div>
-                            <h1 className="text-2xl font-black text-slate-800">日语背单词 <span className="text-blue-600">V1.0Beta</span></h1>
+                            <h1 className="text-2xl font-black text-slate-800">日语背单词 <span className="text-blue-600">V1.01Beta</span></h1>
                             <p className="text-slate-400 text-[10px] font-bold tracking-widest uppercase mt-1">By JdohkrX, Gemini3.0</p>
                         </div>
                         <div className="text-right">
@@ -1168,85 +1231,177 @@
                         </div>
                     </header>
 
-                    <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-[32px] p-8 text-white shadow-xl card-shadow relative overflow-hidden mb-8 transform transition-all active:scale-[0.98]">
+                    <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-[32px] p-8 text-white shadow-xl card-shadow relative overflow-hidden mb-6 transform transition-all active:scale-[0.98]">
                         <div className="relative z-10">
-                            <p className="opacity-80 text-xs font-bold mb-2 uppercase tracking-wider">今日待学 (所有题型)</p>
+                            <p className="opacity-80 text-xs font-bold mb-2 uppercase tracking-wider">今日待学 (复习优先)</p>
                             <div className="flex items-end gap-2 mb-6">
-                                <span className="text-6xl font-black leading-none tracking-tight">{tasks.queue.length}</span>
-                                <span className="text-sm font-bold opacity-60 mb-2">个任务</span>
+                                <span className="text-6xl font-black leading-none tracking-tight">
+                                    {isAllDone ? <i className="fa-solid fa-check text-5xl"></i> : tasks.queue.length}
+                                </span>
+                                <span className="text-sm font-bold opacity-60 mb-2">个待办任务</span>
+                            </div>
+                            
+                            <div className="flex justify-between text-xs font-bold opacity-80 mb-1">
+                                <span>新词进度: {learnedTodayCount}/{targetToday}</span>
                             </div>
                             <div className="bg-black/20 h-3 rounded-full overflow-hidden mb-6 backdrop-blur-sm">
                                 <div className="bg-white h-full rounded-full transition-all duration-1000 ease-out" style={{width: `${progress}%`}}></div>
                             </div>
-                            <button onClick={() => setView('study')} className="w-full bg-white text-blue-700 py-4 rounded-2xl font-black text-lg shadow-lg btn-press">
-                                开始背诵 <i className="fa-solid fa-arrow-right ml-2"></i>
-                            </button>
+
+                            {!isAllDone ? (
+                                <button onClick={() => setView('study')} className="w-full bg-white text-blue-700 py-4 rounded-2xl font-black text-lg shadow-lg btn-press">
+                                    开始背诵 <i className="fa-solid fa-arrow-right ml-2"></i>
+                                </button>
+                            ) : (
+                                <div className="space-y-3">
+                                    <div className="w-full bg-white/20 text-white py-4 rounded-2xl font-black text-lg border border-white/30 text-center">
+                                        今日任务已完成！🎉
+                                    </div>
+                                    <button onClick={onAddMore} className="w-full bg-white text-blue-700 py-4 rounded-2xl font-black text-sm shadow-lg btn-press">
+                                        💪 感觉不够？再学10个
+                                    </button>
+                                </div>
+                            )}
                         </div>
                         <i className="fa-solid fa-shapes absolute -right-6 -bottom-6 text-9xl text-white/10 rotate-12"></i>
                     </div>
 
+                    {mistakeCount > 0 && (
+                        <div className="mb-6 animate-slide-up">
+                            <button onClick={startMistakeReview} className="w-full bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center justify-between shadow-sm active:bg-red-100 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-red-500 text-white flex items-center justify-center text-lg"><i className="fa-solid fa-bomb"></i></div>
+                                    <div className="text-left">
+                                        <p className="text-sm font-black text-red-600">消灭错词</p>
+                                        <p className="text-xs text-red-400">积累了 {mistakeCount} 个生疏词</p>
+                                    </div>
+                                </div>
+                                <i className="fa-solid fa-chevron-right text-red-300"></i>
+                            </button>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center justify-center">
+                        <button onClick={() => onNavigateToList('mastered')} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center justify-center active:scale-95 transition-transform">
                             <span className="text-3xl font-black text-slate-800">{tasks.masteredCount}</span>
                             <span className="text-xs text-slate-400 font-bold uppercase mt-1">完全掌握</span>
-                        </div>
-                        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center justify-center">
+                        </button>
+                        <button onClick={() => onNavigateToList('learning')} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center justify-center active:scale-95 transition-transform">
                             <span className="text-3xl font-black text-green-500">{Object.keys(stats.mastery).length}</span>
                             <span className="text-xs text-slate-400 font-bold uppercase mt-1">学习中单词</span>
-                        </div>
+                        </button>
                     </div>
                 </div>
             );
         };
 
-        // --- 2. 学习 (修复 Type 2 判定逻辑) ---
-        const Study = ({ tasks, settings, setSettings, onComplete, onExit }) => {
-            const sessionQueue = useMemo(() => tasks.queue, []);
+        const Study = ({ tasks, settings, setSettings, onComplete, onExit, isMistakeMode = false }) => {
+            const [stage, setStage] = useState(isMistakeMode ? 'quiz' : (tasks.newWords.length > 0 ? 'preview' : 'quiz'));
+            
+            const [sessionQueue] = useState(() => {
+                const q = isMistakeMode ? tasks.mistakeQueue : tasks.queue;
+                return [...q]; 
+            });
+
             const [idx, setIdx] = useState(0);
-            const [mode, setMode] = useState('card');
+            const [mode, setMode] = useState(() => getTaskMode(sessionQueue[0]));
             const [input, setInput] = useState('');
             const [feedback, setFeedback] = useState(null);
             
-            const [options, setOptions] = useState([]);
             const inputRef = useRef(null);
             const task = sessionQueue[idx];
+            const quizType = task ? parseInt(task.type) : 0;
+
+            const options = useMemo(() => {
+                if (!task) return [];
+                if (quizType === 0 || quizType === 3) {
+                    return generateOptions(task, quizType);
+                }
+                return [];
+            }, [task, quizType]);
 
             useEffect(() => {
-                if (mode === 'quiz-input' && inputRef.current) {
+                if (stage === 'quiz' && mode === 'quiz-input' && inputRef.current) {
                     setTimeout(() => {
                         inputRef.current?.focus();
                         inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }, 50);
                 }
-            }, [mode]);
+            }, [mode, stage, idx]);
 
-            const generateOptions = useCallback((correctWord) => {
-                const opts = [correctWord];
-                const pool = FULL_VOCAB.filter(w => w.id !== correctWord.id);
-                while (opts.length < 4 && pool.length > 0) {
-                    const randIdx = Math.floor(Math.random() * pool.length);
-                    opts.push(pool[randIdx]);
-                    pool.splice(randIdx, 1);
+            useEffect(() => {
+                if (mode !== 'quiz-input' || !settings.autoSubmit || feedback || !task) return;
+
+                const userJp = normalizeJapanese(input);
+                const kana = normalizeJapanese(task.kana);
+                const kanji = normalizeJapanese(task.kanji || '');
+                const romaji = normalizeJapanese(wanakana.toRomaji(task.kana));
+
+                let isMatch = false;
+                if (userJp.length >= 1) {
+                    if (quizType === 2) { 
+                        if (userJp === kana || userJp === romaji) isMatch = true;
+                    } else { 
+                        if (userJp === kana || userJp === kanji || userJp === romaji) isMatch = true;
+                    }
                 }
-                return opts.sort(() => Math.random() - 0.5);
-            }, []);
 
-            if (!task) {
-                return (
+                if (isMatch) {
+                    checkInputAnswer();
+                }
+            }, [input, settings.autoSubmit, feedback, mode, task]);
+
+            if (stage === 'finish' || (stage === 'quiz' && !task)) {
+                 if (stage !== 'finish' && !isMistakeMode) {
+                     setTimeout(() => confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }), 100);
+                 }
+                 
+                 return (
                     <div className="h-screen flex flex-col items-center justify-center bg-white p-8 text-center animate-slide-up safe-area-top">
-                        <div className="w-24 h-24 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-4xl mb-6 shadow-lg"><i className="fa-solid fa-check"></i></div>
-                        <h2 className="text-3xl font-black text-slate-800 mb-2">任务完成！</h2>
-                        <button onClick={onExit} className="w-full max-w-xs px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl btn-press">返回首页</button>
+                        <div className="w-24 h-24 bg-yellow-400 text-white rounded-full flex items-center justify-center text-4xl mb-6 shadow-xl animate-bounce"><i className="fa-solid fa-trophy"></i></div>
+                        <h2 className="text-3xl font-black text-slate-800 mb-2">{isMistakeMode ? "错词复习完成！" : "本次学习完成！"}</h2>
+                        <p className="text-slate-400 mb-10 font-bold">保持这个节奏，日语达人就是你</p>
+                        <div className="w-full space-y-3">
+                            <button onClick={onExit} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black shadow-xl btn-press">返回首页</button>
+                            {!isMistakeMode && tasks.mistakeCount > 0 && (
+                                <button onClick={() => window.location.reload()} className="w-full py-4 text-red-500 font-bold">还有错词未消灭</button>
+                            )}
+                        </div>
                     </div>
                 );
             }
 
-            const quizType = parseInt(task.type);
+            if (stage === 'preview') {
+                return (
+                    <div className="safe-area-top h-full flex flex-col bg-slate-50">
+                        <div className="px-6 pt-6 pb-4">
+                            <h2 className="text-2xl font-black text-slate-800">今日新词预习</h2>
+                            <p className="text-sm text-slate-400">共 {tasks.newWords.length} 个新单词，先混个眼熟！</p>
+                        </div>
+                        <div className="flex-1 overflow-y-auto px-6 pb-24 space-y-3">
+                            {tasks.newWords.map((word, i) => (
+                                <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+                                    <div className="flex items-baseline justify-between mb-1">
+                                        <span className="text-xl font-black text-slate-800">{word.kanji || word.kana}</span>
+                                        <span className="text-xs font-mono text-slate-300">L{word.lesson}</span>
+                                    </div>
+                                    {word.kanji && <div className="text-sm text-slate-500 font-bold">{word.kana}</div>}
+                                    <div className="text-xs text-slate-400 font-mono mt-1 mb-2">{wanakana.toRomaji(word.kana)}</div>
+                                    <div className="text-sm text-blue-600 font-bold pt-2 border-t border-slate-50">{word.english}</div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="p-6 bg-white border-t border-slate-100 safe-area-bottom">
+                            <button onClick={() => setStage('quiz')} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-lg shadow-lg btn-press">
+                                我已预览，开始测试
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
 
-            // V1.0Beta 核心判定修复
             const checkInputAnswer = () => {
                 if (feedback) return;
-                
                 const userJp = normalizeJapanese(input);
                 const kana = normalizeJapanese(task.kana);
                 const kanji = normalizeJapanese(task.kanji || '');
@@ -1254,18 +1409,10 @@
                 
                 let isCorrect = false;
                 if (userJp.length >= 1) {
-                    if (quizType === 2) {
-                        // Type 2 (读音测试): 必须输入假名或罗马音。禁止输入汉字。
-                        // 即使输入的汉字和题目一样，也算错（或者不处理）。
-                        // 这里我们只匹配 kana 和 romaji。
-                        if (userJp === kana || userJp === romaji) {
-                            isCorrect = true;
-                        }
-                    } else {
-                        // Type 1 (英->日): 汉字、假名、罗马音都算对
-                        if (userJp === kana || userJp === kanji || userJp === romaji) {
-                            isCorrect = true;
-                        }
+                    if (quizType === 2) { 
+                        if (userJp === kana || userJp === romaji) isCorrect = true;
+                    } else { 
+                        if (userJp === kana || userJp === kanji || userJp === romaji) isCorrect = true;
                     }
                 }
                 finalizeResult(isCorrect);
@@ -1280,47 +1427,30 @@
             const finalizeResult = (isCorrect) => {
                 setFeedback(isCorrect ? 'correct' : 'wrong');
                 onComplete(task.id, task.type, isCorrect);
-                const delay = (isCorrect && (quizType === 0 || settings.autoSubmit)) ? 800 : 1800;
+                const delay = (isCorrect && (quizType === 0 || quizType === 3 || settings.autoSubmit)) ? 800 : 2000;
+                
                 setTimeout(() => {
                     setFeedback(null);
                     setInput('');
-                    setMode('card');
-                    setIdx(prev => prev + 1);
+                    const nextIdx = idx + 1;
+                    if (nextIdx < sessionQueue.length) {
+                        const nextTask = sessionQueue[nextIdx];
+                        setMode(getTaskMode(nextTask));
+                        setIdx(nextIdx);
+                    } else {
+                        setIdx(nextIdx); 
+                        setStage('finish');
+                    }
                 }, delay);
             };
 
-            const startQuiz = () => {
-                if (quizType === 0) {
-                    setOptions(generateOptions(task));
-                    setMode('quiz-choice');
-                } else {
-                    setMode('quiz-input');
-                }
-            };
-
-            useEffect(() => {
-                if (mode === 'quiz-input' && settings.autoSubmit && !feedback && input.length > 0) {
-                    const userJp = normalizeJapanese(input);
-                    const kana = normalizeJapanese(task.kana);
-                    const kanji = normalizeJapanese(task.kanji || '');
-                    const romaji = normalizeJapanese(wanakana.toRomaji(task.kana));
-                    
-                    if (userJp.length >= 1) {
-                        if (quizType === 2) {
-                            // 自动提交逻辑也要同步：只在匹配到假名/罗马音时提交
-                            if (userJp === kana || userJp === romaji) checkInputAnswer();
-                        } else {
-                            if (userJp === kana || userJp === kanji || userJp === romaji) checkInputAnswer();
-                        }
+            const handleKeyDown = (e) => { 
+                if (e.key === 'Enter') {
+                    if (!e.nativeEvent.isComposing) { 
+                        e.preventDefault(); 
+                        checkInputAnswer(); 
                     }
                 }
-            }, [input, mode, settings.autoSubmit, feedback]);
-
-            const handleKeyDown = (e) => { 
-                if (e.key === 'Enter' && !e.nativeEvent.isComposing) { 
-                    e.preventDefault(); 
-                    checkInputAnswer(); 
-                } 
             };
 
             return (
@@ -1331,37 +1461,22 @@
                             <div className="h-full bg-blue-500 transition-all duration-300" style={{width: `${((idx) / sessionQueue.length) * 100}%`}}></div>
                         </div>
                         <span className="text-xs font-bold text-slate-400 font-mono w-10 text-right">{idx + 1}/{sessionQueue.length}</span>
-                        {quizType !== 0 && (
+                        {(quizType === 1 || quizType === 2) && (
                             <button onClick={() => setSettings(s => ({...s, autoSubmit: !s.autoSubmit}))} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all btn-press ${settings.autoSubmit ? 'bg-yellow-400 text-white shadow-md' : 'bg-slate-200 text-slate-400'}`}><i className="fa-solid fa-bolt"></i></button>
                         )}
                     </div>
 
                     <div className="flex-1 p-6 flex flex-col overflow-y-auto w-full pb-24">
-                        {mode === 'card' ? (
-                            /* 卡片模式 */
-                            <div className="flex-1 bg-white rounded-[40px] shadow-xl p-8 pb-12 flex flex-col items-center text-center relative overflow-hidden animate-slide-up mb-6">
-                                <div className="flex-1 flex flex-col items-center justify-center w-full">
-                                    <ruby className="ruby-font font-black mb-10 text-slate-800 tracking-wider">
-                                        {task.kanji || task.kana} <rt className="text-lg">{task.kanji ? task.kana : ''}</rt>
-                                    </ruby>
-                                    <p className="text-3xl text-blue-600 font-bold leading-relaxed px-4 mb-8">{task.english}</p>
-                                    <div className="mt-4 px-4 py-2 bg-slate-100 rounded-xl text-sm font-bold text-slate-400">
-                                        {quizType === 0 ? '选择题: 日 -> 英' : (quizType === 1 ? '拼写: 英 -> 日' : '拼写: 读音测试')}
-                                    </div>
-                                </div>
-                                <div className="w-full mt-auto pt-8">
-                                    <button onClick={startQuiz} className="w-full py-5 bg-slate-900 text-white rounded-3xl font-black text-xl shadow-xl btn-press tracking-widest">
-                                        记住了，去测试
-                                    </button>
-                                </div>
-                            </div>
-                        ) : mode === 'quiz-choice' ? (
-                            /* 选择题模式 */
+                        {mode === 'quiz-choice' ? (
                             <div className="flex-1 flex flex-col">
                                 <div className="bg-white rounded-[32px] shadow-lg p-8 mb-6 text-center animate-slide-up">
-                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">请选择正确意思</div>
-                                    <div className="text-5xl font-black text-slate-800">{task.kanji || task.kana}</div>
-                                    {task.kanji && <div className="text-xl font-bold text-slate-400 mt-2">{task.kana}</div>}
+                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
+                                        {quizType === 0 ? "请选择正确意思" : "请选择对应汉字"}
+                                    </div>
+                                    <div className="text-5xl font-black text-slate-800">
+                                        {quizType === 3 ? task.kana : (task.kanji || task.kana)}
+                                    </div>
+                                    {quizType === 0 && task.kanji && <div className="text-xl font-bold text-slate-400 mt-2">{task.kana}</div>}
                                 </div>
                                 <div className="grid grid-cols-1 gap-3 animate-slide-up">
                                     {options.map((opt, i) => (
@@ -1375,18 +1490,17 @@
                                                     'bg-white border-transparent text-slate-700 active:scale-95 active:bg-blue-50 hover:border-blue-200'
                                                 }`}
                                         >
-                                            {opt.english}
+                                            {quizType === 3 ? opt.kanji : opt.english}
                                         </button>
                                     ))}
                                 </div>
                                 {feedback === 'wrong' && (
                                     <div className="mt-4 p-4 bg-red-100 text-red-600 rounded-2xl text-center font-bold animate-pulse">
-                                        正确答案是: {task.english}
+                                        正确答案: {quizType === 3 ? task.kanji : task.english}
                                     </div>
                                 )}
                             </div>
                         ) : (
-                            /* 填空模式 */
                             <div className={`flex-1 rounded-[40px] shadow-xl p-6 flex flex-col relative overflow-hidden transition-colors duration-300 mb-4 ${feedback === 'correct' ? 'bg-green-50 ring-4 ring-green-100' : feedback === 'wrong' ? 'bg-red-50 ring-4 ring-red-100' : 'bg-white'}`}>
                                 <div className="flex-1 flex flex-col items-center justify-center w-full">
                                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-10 bg-slate-100 px-3 py-1 rounded-full">
@@ -1412,54 +1526,178 @@
             );
         };
 
-        // --- 3. 列表 ---
-        const List = ({ vocab }) => {
+        const List = ({ vocab, stats, defaultFilter }) => {
             const [search, setSearch] = useState('');
+            // filterStatus: 'all' | 'learning' | 'mastered'
+            const [statusFilter, setStatusFilter] = useState(defaultFilter || 'all');
             const [filterLesson, setFilterLesson] = useState('all');
             const lessons = useMemo(() => [...new Set(vocab.map(v => v.lesson))].sort((a,b) => (typeof a === 'string' ? 1 : a - b)), [vocab]);
+            
+            // 如果外部传入了 filter，同步更新
+            useEffect(() => {
+                if(defaultFilter) setStatusFilter(defaultFilter);
+            }, [defaultFilter]);
 
-            const filtered = vocab.filter(v => 
-                (filterLesson === 'all' || v.lesson === filterLesson) &&
-                (v.kanji.includes(search) || v.kana.includes(search) || v.english.toLowerCase().includes(search.toLowerCase()))
-            );
+            // 计算单词的总体掌握进度 (0-100)
+            const getWordProgress = (wordId) => {
+                const m = stats.mastery[wordId];
+                if (!m) return 0;
+                
+                const word = vocab.find(w => w.id === wordId);
+                if (!word) return 0;
+                
+                const types = getValidTypes(word);
+                if (types.length === 0) return 0;
+
+                let totalLevel = 0;
+                let maxLevel = types.length * 7; 
+                
+                types.forEach(t => {
+                    if (m[t]) totalLevel += m[t].level;
+                });
+                
+                return Math.round((totalLevel / maxLevel) * 100);
+            };
+
+            // 判断单词状态
+            const getWordStatus = (wordId) => {
+                const progress = getWordProgress(wordId);
+                if (progress === 100) return 'mastered';
+                if (stats.mastery[wordId]) return 'learning';
+                return 'not_started'; // 未开始
+            };
+
+            const filtered = vocab.filter(word => {
+                // 1. 搜索过滤
+                const matchesSearch = word.kanji.includes(search) || word.kana.includes(search) || word.english.toLowerCase().includes(search.toLowerCase());
+                if (!matchesSearch) return false;
+
+                // 2. 状态过滤
+                const status = getWordStatus(word.id);
+                if (statusFilter !== 'all' && status !== statusFilter) return false;
+
+                // 3. 课程过滤 (新增逻辑)
+                if (filterLesson !== 'all' && word.lesson !== filterLesson) return false;
+
+                return true;
+            });
 
             const handleBlur = () => { setTimeout(() => { document.documentElement.scrollLeft = 0; document.body.scrollLeft = 0; }, 100); };
 
             return (
                 <div className="safe-area-top h-full flex flex-col bg-slate-50 w-full overflow-hidden">
-                    <div className="sticky top-0 bg-slate-50 z-20 px-6 pt-6 pb-2 w-full">
+                    <div className="sticky top-0 bg-slate-50 z-20 px-6 pt-6 pb-2 w-full shadow-sm">
                         <h2 className="text-2xl font-black text-slate-800 mb-4">词库浏览</h2>
+                        
+                        {/* 搜索框 */}
                         <div className="relative w-full h-12 mb-4">
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 z-10 pointer-events-none"><i className="fa-solid fa-search text-lg"></i></div>
                             <input className="w-full h-full bg-white border border-slate-200 rounded-2xl pl-12 pr-4 text-base font-bold text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm" placeholder="搜索..." value={search} onChange={e => setSearch(e.target.value)} onBlur={handleBlur} />
                         </div>
+
+                        {/* 状态切换 Tabs */}
+                        <div className="flex bg-slate-200 rounded-xl p-1 mb-3">
+                            {['all', 'learning', 'mastered'].map(s => (
+                                <button 
+                                    key={s} 
+                                    onClick={() => setStatusFilter(s)}
+                                    className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${statusFilter === s ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400'}`}
+                                >
+                                    {s === 'all' ? '全部' : s === 'learning' ? '学习中' : '已掌握'}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* 课程筛选 (恢复功能) */}
                         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 mask-linear w-full">
-                            <button onClick={() => setFilterLesson('all')} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-black uppercase transition-all ${filterLesson === 'all' ? 'bg-slate-800 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-400'}`}>全部</button>
+                            <button onClick={() => setFilterLesson('all')} className={`flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-black uppercase transition-all ${filterLesson === 'all' ? 'bg-slate-800 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-400'}`}>全部课程</button>
                             {lessons.map(l => (
-                                <button key={l} onClick={() => setFilterLesson(l)} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-black uppercase transition-all ${filterLesson === l ? 'bg-blue-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-400'}`}>L{l}</button>
+                                <button key={l} onClick={() => setFilterLesson(l)} className={`flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-black uppercase transition-all ${filterLesson === l ? 'bg-blue-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-400'}`}>L{l}</button>
                             ))}
                         </div>
                     </div>
-                    <div className="flex-1 px-6 overflow-y-auto no-scrollbar space-y-3 pb-24 w-full">
-                        {filtered.slice(0, 100).map(word => (
-                            <div key={word.id} className="bg-white p-5 rounded-2xl border border-slate-100 flex justify-between items-center active:bg-slate-50 transition-colors shadow-sm w-full">
-                                <div>
-                                    <div className="text-xl font-black text-slate-800 leading-none mb-1.5">{word.kanji || word.kana}{word.kanji && <span className="text-sm text-slate-400 font-normal ml-2">{word.kana}</span>}</div>
-                                    <div className="text-sm text-slate-500 font-bold">{word.english}</div>
+
+                    <div className="flex-1 px-6 overflow-y-auto no-scrollbar space-y-3 pb-24 w-full pt-4">
+                        {filtered.map(word => {
+                            const progress = getWordProgress(word.id);
+                            return (
+                                <div key={word.id} className="bg-white p-5 rounded-2xl border border-slate-100 flex flex-col active:bg-slate-50 transition-colors shadow-sm w-full">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div className="text-2xl font-black text-slate-800">{word.kanji || word.kana}</div>
+                                        <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-1 rounded font-bold">L{word.lesson}</span>
+                                    </div>
+                                    {word.kanji && <div className="text-sm font-bold text-slate-500 mb-1">{word.kana}</div>}
+                                    <div className="text-xs font-mono text-slate-400 mb-2">{wanakana.toRomaji(word.kana)}</div>
+                                    <div className="text-sm text-blue-600 font-bold border-t border-slate-50 pt-2 mb-3">{word.english}</div>
+                                    
+                                    {/* 熟练度进度条 */}
+                                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden flex items-center">
+                                        <div 
+                                            className={`h-full rounded-full transition-all duration-500 ${progress === 100 ? 'bg-green-500' : 'bg-blue-500'}`} 
+                                            style={{width: `${progress}%`}}
+                                        ></div>
+                                    </div>
+                                    <div className="flex justify-between mt-1">
+                                        <span className="text-[10px] text-slate-300 font-bold">熟练度</span>
+                                        <span className={`text-[10px] font-bold ${progress === 100 ? 'text-green-500' : 'text-blue-500'}`}>{progress}%</span>
+                                    </div>
                                 </div>
-                                <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-1 rounded font-bold">L{word.lesson}</span>
-                            </div>
-                        ))}
+                            );
+                        })}
+                        {filtered.length === 0 && (
+                            <div className="text-center text-slate-400 py-10 font-bold text-sm">没有找到相关单词</div>
+                        )}
                     </div>
                 </div>
             );
         };
 
-        // --- 4. 设置 ---
-        const Settings = ({ settings, setSettings, onReset }) => {
+        const Settings = ({ settings, setSettings, stats, setStats, onReset }) => {
+            const fileInputRef = useRef(null);
+            
             const handleNumChange = (key, val) => {
                 if (val === '') setSettings(s => ({ ...s, [key]: '' }));
                 else { const num = parseInt(val); if (!isNaN(num)) setSettings(s => ({ ...s, [key]: num })); }
+            };
+
+            const handleExport = () => {
+                const data = {
+                    stats,
+                    settings,
+                    meta: { version: 'V1.01Beta', date: new Date().toISOString() }
+                };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `japanese_backup_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const handleImport = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (data.stats && data.settings) {
+                            if (confirm("检测到备份文件。\n\n是否覆盖当前进度？(此操作不可撤销)")) {
+                                setStats(data.stats);
+                                setSettings(data.settings);
+                                alert("导入成功！");
+                            }
+                        } else {
+                            alert("文件格式不正确，缺少关键数据。");
+                        }
+                    } catch (error) {
+                        alert("文件解析失败，请确保上传的是正确的 JSON 备份文件。");
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = null; 
             };
 
             return (
@@ -1489,34 +1727,45 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <button onClick={onReset} className="w-full py-5 text-red-400 font-black text-sm uppercase tracking-widest bg-red-50 rounded-3xl active:bg-red-100 btn-press"><i className="fa-solid fa-trash mr-2"></i> 重置所有数据</button>
-                    
-                    <div className="mt-8 text-center">
-                        <p className="text-slate-300 text-[10px] font-bold">日语背单词 V1.0Beta - By JdohkrX, Gemini3.0</p>
+
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                        <button onClick={handleExport} className="bg-green-50 text-green-600 font-black py-4 rounded-2xl active:bg-green-100 transition-colors btn-press border border-green-100">
+                            <i className="fa-solid fa-file-export mr-2"></i> 备份数据
+                        </button>
+                        <button onClick={() => fileInputRef.current?.click()} className="bg-blue-50 text-blue-600 font-black py-4 rounded-2xl active:bg-blue-100 transition-colors btn-press border border-blue-100">
+                            <i className="fa-solid fa-file-import mr-2"></i> 恢复数据
+                        </button>
+                        <input type="file" ref={fileInputRef} onChange={handleImport} accept=".json" className="hidden" />
                     </div>
+
+                    <button onClick={onReset} className="w-full py-5 text-red-400 font-black text-sm uppercase tracking-widest bg-red-50 rounded-3xl active:bg-red-100 btn-press"><i className="fa-solid fa-trash mr-2"></i> 重置所有数据</button>
                 </div>
             );
         };
 
-        // --- 5. 统计 ---
         const Stats = ({ stats }) => {
-            const today = new Date();
-            const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+            const todayStr = getTodayStr(); 
+            const todayDate = new Date(todayStr);
+            const daysInMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0).getDate();
+            
             return (
                 <div className="p-6 list-padding-bottom animate-slide-up safe-area-top w-full overflow-hidden">
                     <h2 className="text-2xl font-black text-slate-800 mb-8 mt-4">进度统计</h2>
                     <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm mb-6 w-full">
                         <div className="flex justify-between items-center mb-6">
-                            <span className="font-bold text-slate-800 text-lg">{today.getMonth() + 1}月</span>
-                            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Activity Log</span>
+                            <span className="font-bold text-slate-800 text-lg">{todayDate.getMonth() + 1}月</span>
+                            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">打卡记录 (UTC+8)</span>
                         </div>
                         <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:'6px', width:'100%'}}>
                             {['S','M','T','W','T','F','S'].map(d => <div key={d} className="text-center text-[10px] font-black text-slate-300 mb-2">{d}</div>)}
                             {[...Array(daysInMonth)].map((_, i) => {
                                 const day = i + 1;
-                                const dateStr = new Date(today.getFullYear(), today.getMonth(), day).toISOString().split('T')[0];
-                                const count = stats.history.find(h => h.date === dateStr)?.count || 0;
+                                const y = todayDate.getFullYear();
+                                const m = String(todayDate.getMonth() + 1).padStart(2, '0');
+                                const d = String(day).padStart(2, '0');
+                                const dateKey = `${y}-${m}-${d}`;
+                                
+                                const count = stats.history.find(h => h.date === dateKey)?.count || 0;
                                 let bgClass = 'bg-slate-50 text-slate-300';
                                 if (count > 0) bgClass = 'bg-blue-100 text-blue-600';
                                 if (count > 20) bgClass = 'bg-blue-500 text-white shadow-md shadow-blue-200';
@@ -1528,18 +1777,29 @@
             );
         };
 
-        // --- 主程序 ---
         const App = () => {
             const [view, setView] = useState('home');
-            const [stats, setStats] = useState(() => JSON.parse(localStorage.getItem('minna_app_v18')) || DEFAULT_STATS);
-            const [settings, setSettings] = useState(() => JSON.parse(localStorage.getItem('minna_settings_v18')) || DEFAULT_SETTINGS);
+            // List 列表筛选状态，默认为 'all'
+            const [listFilter, setListFilter] = useState('all');
 
-            useEffect(() => localStorage.setItem('minna_app_v18', JSON.stringify(stats)), [stats]);
-            useEffect(() => localStorage.setItem('minna_settings_v18', JSON.stringify(settings)), [settings]);
+            const [stats, setStats] = useState(() => JSON.parse(localStorage.getItem('minna_app_v23')) || DEFAULT_STATS); 
+            const [settings, setSettings] = useState(() => JSON.parse(localStorage.getItem('minna_settings_v23')) || DEFAULT_SETTINGS);
+            
+            const [tempGoalAddon, setTempGoalAddon] = useState(0);
+
+            useEffect(() => localStorage.setItem('minna_app_v23', JSON.stringify(stats)), [stats]);
+            useEffect(() => localStorage.setItem('minna_settings_v23', JSON.stringify(settings)), [settings]);
+
+            useEffect(() => {
+                const today = getTodayStr();
+                if (stats.lastDate !== today) {
+                    setTempGoalAddon(0);
+                }
+            }, [stats.lastDate]);
 
             const tasks = useMemo(() => {
                 const now = Date.now();
-                const today = new Date().toISOString().split('T')[0];
+                const today = getTodayStr();
                 const rStart = settings.rangeStart === '' ? 1 : settings.rangeStart;
                 const rEnd = settings.rangeEnd === '' ? 25 : settings.rangeEnd;
                 
@@ -1547,6 +1807,16 @@
                     const l = w.lesson;
                     if (typeof l === 'string') return true; 
                     return l >= rStart && l <= rEnd;
+                });
+
+                const mistakeIds = new Set(stats.mistakes || []);
+                const mistakeQueue = [];
+                mistakeIds.forEach(id => {
+                    const w = FULL_VOCAB.find(x => x.id === id);
+                    if(w) {
+                        const types = getValidTypes(w);
+                        types.forEach(t => mistakeQueue.push({ ...w, type: t }));
+                    }
                 });
 
                 let reviewQueue = [];
@@ -1572,38 +1842,95 @@
                     learnedWordIds.add(Number(wid));
                 });
 
-                let newQueue = [];
                 const potentialNewWords = scopedVocab.filter(w => !learnedWordIds.has(w.id));
-                const wordsToLearn = potentialNewWords.slice(0, settings.dailyGoal || 20);
-                wordsToLearn.forEach(word => {
+                const currentTarget = settings.dailyGoal + tempGoalAddon;
+                const learnedTodayCount = stats.todayNewWords ? stats.todayNewWords.length : 0;
+                const remainingNewQuota = Math.max(0, currentTarget - learnedTodayCount);
+                
+                const newWordsRaw = potentialNewWords.slice(0, remainingNewQuota);
+                
+                let newQueue = [];
+                newWordsRaw.forEach(word => {
                     const types = getValidTypes(word);
                     types.forEach(type => newQueue.push({ ...word, type }));
                 });
 
+                const finalReviewQueue = shuffle(reviewQueue);
+                const finalNewQueue = shuffle(newQueue);
+
                 const doneToday = stats.history.find(h => h.date === today)?.count || 0;
-                return { queue: [...reviewQueue, ...newQueue], doneToday, masteredCount, review: reviewQueue, news: newQueue };
-            }, [stats, settings]);
+                
+                return { 
+                    queue: [...finalReviewQueue, ...finalNewQueue], 
+                    newWords: newWordsRaw, 
+                    mistakeQueue, 
+                    mistakeCount: mistakeIds.size,
+                    doneToday, 
+                    masteredCount,
+                    tempGoalAddon
+                };
+            }, [stats, settings, tempGoalAddon]);
+
+            const handleAddMore = () => {
+                setTempGoalAddon(prev => prev + 10);
+                setView('study');
+            };
+
+            // 跳转到词库并筛选
+            const handleNavigateToList = (filterType) => {
+                setListFilter(filterType);
+                setView('list');
+            };
 
             const handleComplete = useCallback((wordId, type, isCorrect) => {
-                const today = new Date().toISOString().split('T')[0];
+                const today = getTodayStr();
                 const now = Date.now();
+                
                 setStats(prev => {
+                    let currentTodayNewWords = prev.todayNewWords || [];
+                    if (prev.lastDate !== today) {
+                        currentTodayNewWords = [];
+                    }
+
+                    if (!prev.mastery[wordId] && !currentTodayNewWords.includes(wordId)) {
+                        currentTodayNewWords = [...currentTodayNewWords, wordId];
+                    }
+
                     const wordMastery = prev.mastery[wordId] || {};
                     const typeMastery = wordMastery[type] || { level: 0, nextReview: 0 };
                     const nextLevel = isCorrect ? Math.min(7, typeMastery.level + 1) : Math.max(0, typeMastery.level - 1);
                     const nextReview = now + SRS_INTERVALS[nextLevel] * 24 * 60 * 60 * 1000;
                     const newMastery = { ...prev.mastery, [wordId]: { ...wordMastery, [type]: { level: nextLevel, nextReview } } };
+
                     const newHistory = [...prev.history];
                     const hIdx = newHistory.findIndex(h => h.date === today);
                     if (hIdx > -1) newHistory[hIdx] = { ...newHistory[hIdx], count: newHistory[hIdx].count + 1 };
                     else newHistory.push({ date: today, count: 1 });
+
                     let newStreak = prev.streak;
                     if (prev.lastDate !== today) {
-                        const y = new Date(); y.setDate(y.getDate() - 1);
-                        if (prev.lastDate === y.toISOString().split('T')[0]) newStreak++;
+                        const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+                        const yStr = yesterday.toISOString().split('T')[0];
+                        if (prev.lastDate === yStr) newStreak++;
                         else newStreak = 1;
                     } else if (newStreak === 0) newStreak = 1;
-                    return { ...prev, mastery: newMastery, history: newHistory, streak: newStreak, lastDate: today };
+
+                    let newMistakes = prev.mistakes ? [...prev.mistakes] : [];
+                    if (!isCorrect) {
+                        if (!newMistakes.includes(wordId)) newMistakes.push(wordId);
+                    } else {
+                        newMistakes = newMistakes.filter(id => id !== wordId);
+                    }
+
+                    return { 
+                        ...prev, 
+                        mastery: newMastery, 
+                        history: newHistory, 
+                        streak: newStreak, 
+                        lastDate: today, 
+                        mistakes: newMistakes,
+                        todayNewWords: currentTodayNewWords
+                    };
                 });
             }, []);
 
@@ -1620,20 +1947,21 @@
             const Nav = () => (
                 <div className="fixed bottom-0 left-0 right-0 glass-nav flex justify-around items-center z-50">
                     <button onClick={() => setView('home')} className={`flex flex-col items-center w-16 btn-press ${view === 'home' ? 'text-blue-600 scale-110' : 'text-slate-300'}`}><i className="fa-solid fa-house text-2xl mb-1"></i><span className="text-[10px] font-bold">首页</span></button>
-                    <button onClick={() => setView('list')} className={`flex flex-col items-center w-16 btn-press ${view === 'list' ? 'text-blue-600 scale-110' : 'text-slate-300'}`}><i className="fa-solid fa-book-open text-2xl mb-1"></i><span className="text-[10px] font-bold">词库</span></button>
-                    <button onClick={() => setView('settings')} className={`flex flex-col items-center w-16 btn-press ${view === 'settings' ? 'text-blue-600 scale-110' : 'text-slate-300'}`}><i className="fa-solid fa-sliders text-2xl mb-1"></i><span className="text-[10px] font-bold">设置</span></button>
+                    <button onClick={() => { setListFilter('all'); setView('list'); }} className={`flex flex-col items-center w-16 btn-press ${view === 'list' ? 'text-blue-600 scale-110' : 'text-slate-300'}`}><i className="fa-solid fa-book-open text-2xl mb-1"></i><span className="text-[10px] font-bold">词库</span></button>
                     <button onClick={() => setView('stats')} className={`flex flex-col items-center w-16 btn-press ${view === 'stats' ? 'text-blue-600 scale-110' : 'text-slate-300'}`}><i className="fa-solid fa-chart-pie text-2xl mb-1"></i><span className="text-[10px] font-bold">统计</span></button>
+                    <button onClick={() => setView('settings')} className={`flex flex-col items-center w-16 btn-press ${view === 'settings' ? 'text-blue-600 scale-110' : 'text-slate-300'}`}><i className="fa-solid fa-sliders text-2xl mb-1"></i><span className="text-[10px] font-bold">设置</span></button>
                 </div>
             );
 
             return (
                 <div className="max-w-md mx-auto min-h-screen bg-slate-50 relative shadow-2xl overflow-hidden w-full">
-                    {view === 'home' && <Home tasks={tasks} settings={settings} stats={stats} setView={setView} />}
-                    {view === 'list' && <List vocab={FULL_VOCAB} />}
+                    {view === 'home' && <Home tasks={tasks} settings={settings} stats={stats} setView={setView} startMistakeReview={() => setView('mistake-study')} onAddMore={handleAddMore} onNavigateToList={handleNavigateToList} />}
+                    {view === 'list' && <List vocab={FULL_VOCAB} stats={stats} defaultFilter={listFilter} />}
                     {view === 'study' && <Study tasks={tasks} settings={settings} setSettings={setSettings} onComplete={handleComplete} onExit={() => setView('home')} />}
-                    {view === 'settings' && <Settings settings={settings} setSettings={setSettings} onReset={handleReset} />}
+                    {view === 'mistake-study' && <Study tasks={tasks} settings={settings} setSettings={setSettings} onComplete={handleComplete} onExit={() => setView('home')} isMistakeMode={true} />}
+                    {view === 'settings' && <Settings settings={settings} setSettings={setSettings} stats={stats} setStats={setStats} onReset={handleReset} />}
                     {view === 'stats' && <Stats stats={stats} />}
-                    {view !== 'study' && <Nav />}
+                    {view !== 'study' && view !== 'mistake-study' && <Nav />}
                 </div>
             );
         };
