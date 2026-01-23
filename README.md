@@ -12,10 +12,17 @@ A Japanese-words-learning program based on textbook series, "Minna no Nihongo", 
 
 ## 🛠️ 版本历史
 - **V1.0Beta**:
-  1. 基于“英语版初级I第2版”L1-25的课程分类词库（包括汉字、平假名、英文释义）。Based on the course classification lexicon of "English Edition Elementary I 2nd Edition" L1-25 (including kanji, hiragana, and English definitions).
-  2. 显示打卡天数与打卡日历。Display the punch-in days and punch-in calendar.
-  3. 可调整每日目标与单词范围。Daily goals and word range can be adjusted.
-  4. 日译英、英译日、汉字读音三种测试，可选择开启正确答案自动提交模式。There are three tests: Japanese-English translation, English-Japanese translation, and Chinese character pronunciation. You can choose to turn on the automatic submission mode of correct answers.
-  5. 支持输入罗马音。Support input of Roman pronunciation.
-  6. 基于艾宾浩斯遗忘曲线的复习规划。Review planning based on Ebbinghaus' forgetting curve.
-  7. Beta版本，部分功能未经测试，有待修复与优化。Beta version, some functions have not been tested and need to be repaired and optimized.
+  1. 基于“英语版初级I第2版”L1-25的课程分类词库（包括汉字、平假名、英文释义）。
+    Based on the course classification lexicon of "English Edition Elementary I 2nd Edition" L1-25 (including kanji, hiragana, and English definitions).
+  2. 显示打卡天数与打卡日历。
+    Display the punch-in days and punch-in calendar.
+  3. 可调整每日目标与单词范围。
+    Daily goals and word range can be adjusted.
+  4. 日译英、英译日、汉字读音三种测试，可选择开启正确答案自动提交模式。
+    There are three tests: Japanese-English translation, English-Japanese translation, and Chinese character pronunciation. You can choose to turn on the automatic submission mode of correct answers.
+  5. 支持输入罗马音。
+    Support input of Roman pronunciation.
+  6. 基于艾宾浩斯遗忘曲线的复习规划。
+    Review planning based on Ebbinghaus' forgetting curve.
+  7. Beta版本，部分功能未经测试，有待修复与优化。
+    Beta version, some functions have not been tested and need to be repaired and optimized.
