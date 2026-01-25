@@ -11,6 +11,19 @@ A Japanese-words-learning program based on textbook series, "Minna no Nihongo", 
 3. **Android**: 在 Chrome 中点击菜单 -> “安装应用”或“添加到主屏幕”。
 
 ## 🛠️ 版本历史
+- **V1.02Beta**:
+  1. 修复了首页的打卡天数显示错位与字体错误的bug。
+  2. 修复了选择题选择选项后，下一题同一位置的选项仍显示选中后状态的bug。
+  3. 修复了答错的单词并未进入错题本，反而进入待办任务中的bug。
+  4. 点击首页打卡天数可以直接跳转打卡日历，打卡日历页面添加显示“已连续打卡xx天🔥”，完成打卡的天数显示为“🔥”。
+  5. 修复了日译英出现重复选项的bug。
+  6. 复习列表不计入每日目标，可在首页选择复习或学习新词。
+  7. 可选择复习单词数量及范围，从复习列表中随机抽取，当天复习任务完成后可以选择再次复习。
+  8. 修复了在需要输入的题目中，标点符号也被纳入到判断对错的范围之中的bug。
+  9. 修正了部分词库错误。
+  10. Beta版本，部分功能未经测试，有待修复与优化。
+
+
 - **V1.01Beta**:
   1. 优化了日译英测试，选项里只出现对应词性的混淆选项。<br>
     Optimized the Japanese-English translation test, and only confusion options corresponding to parts of speech appear in the options.
@@ -40,6 +53,7 @@ A Japanese-words-learning program based on textbook series, "Minna no Nihongo", 
     After the day's goal is achieved, you can choose to continue learning.
   14. Beta版本，部分功能未经测试，有待修复与优化。<br>
     Beta version, some functions have not been tested and need to be repaired and optimized.
+
 
 - **V1.0Beta**:
   1. 基于“英语版初级I第2版”L1-25的课程分类词库（包括汉字、平假名、英文释义）。<br>
