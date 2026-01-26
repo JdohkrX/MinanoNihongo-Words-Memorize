@@ -7,7 +7,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#ffffff">
-    <title>日语背单词 V1.02Beta</title>
+    <title>日语背单词 V1.03Beta</title>
     
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🇯🇵</text></svg>">
 
@@ -23,7 +23,6 @@
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
         
         html, body {
-            /* V1.02 Fix: 优先使用系统中文/英文无衬线字体，解决中文界面字体不统一问题 */
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;
             background-color: #f8fafc;
             -webkit-user-select: none; user-select: none;
@@ -35,7 +34,6 @@
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
         }
 
-        /* V1.02 Fix: 日语内容专用字体类 */
         .font-jp {
             font-family: 'Noto Sans JP', sans-serif;
         }
@@ -55,6 +53,7 @@
             border-top: 1px solid rgba(0,0,0,0.05);
             padding-bottom: env(safe-area-inset-bottom);
             height: calc(64px + env(safe-area-inset-bottom));
+            z-index: 50;
         }
         
         .safe-area-top { padding-top: env(safe-area-inset-top); }
@@ -84,6 +83,7 @@
         const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
         // --- 核心词汇数据 ---
+        // 请务必在此处填入完整的 FULL_VOCAB 数组
         const FULL_VOCAB = [
     // 第1课 (Lesson 1)
     { id: 101, lesson: 1, kanji: "私", kana: "わたし", english: "I" },
@@ -161,12 +161,11 @@
     { id: 236, lesson: 2, kanji: "違います", kana: "ちがいます", english: "No, it isn't. / You are wrong." },
     { id: 237, lesson: 2, kanji: "", kana: "そうですか", english: "I see. / Is that so?" },
     { id: 238, lesson: 2, kanji: "", kana: "あのう", english: "well... (used to show hesitation)" },
-    { id: 239, lesson: 2, kanji: "ほんの気持ちです", kana: "ほんのきもちです", english: "It's nothing. / It's a token of my gratitude." },
-    { id: 240, lesson: 2, kanji: "", kana: "どうぞ", english: "Please. / Here you are." },
-    { id: 241, lesson: 2, kanji: "", kana: "どうも", english: "Well, thanks." },
-    { id: 242, lesson: 2, kanji: "", kana: "[どうも]ありがとう[ございます]", english: "Thank you [very much]." },
-    { id: 243, lesson: 2, kanji: "これからお世話になります", kana: "これからおせわになります", english: "I hope for your kind assistance hereafter." },
-    { id: 244, lesson: 2, kanji: "こちらこそよろしく", kana: "こちらこそよろしく", english: "I am pleased to meet you. (response to 'douzo yoroshiku')" },
+    { id: 239, lesson: 2, kanji: "", kana: "どうぞ", english: "Please. / Here you are." },
+    { id: 240, lesson: 2, kanji: "", kana: "どうも", english: "Well, thanks." },
+    { id: 241, lesson: 2, kanji: "", kana: "[どうも]ありがとう[ございます]", english: "Thank you [very much]." },
+    { id: 242, lesson: 2, kanji: "これからお世話になります", kana: "これからおせわになります", english: "I hope for your kind assistance hereafter." },
+    { id: 243, lesson: 2, kanji: "こちらこそよろしく", kana: "こちらこそよろしく", english: "I am pleased to meet you. (response to 'douzo yoroshiku')" },
 
     // 第3课 (Lesson 3)
     { id: 301, lesson: 3, kanji: "", kana: "ここ", english: "here, this place" },
@@ -184,7 +183,7 @@
     { id: 313, lesson: 3, kanji: "受付", kana: "うけつけ", english: "reception desk" },
     { id: 314, lesson: 3, kanji: "", kana: "ロビー", english: "lobby" },
     { id: 315, lesson: 3, kanji: "部屋", kana: "へや", english: "room" },
-    { id: 316, lesson: 3, kanji: "トイレ", kana: "トイレ（お手洗い）", english: "toilet, rest room" },
+    { id: 316, lesson: 3, kanji: "トイレ（お手洗い）", kana: "トイレ（おてあらい）", english: "toilet, rest room" },
     { id: 317, lesson: 3, kanji: "階段", kana: "かいだん", english: "staircase" },
     { id: 318, lesson: 3, kanji: "", kana: "エレベーター", english: "elevator, lift" },
     { id: 319, lesson: 3, kanji: "", kana: "エスカレーター", english: "escalator" },
@@ -210,6 +209,7 @@
     { id: 339, lesson: 3, kanji: "", kana: "[～を]見せてください", english: "Please show me [~]." },
     { id: 340, lesson: 3, kanji: "", kana: "じゃ", english: "well, then, in that case" },
     { id: 341, lesson: 3, kanji: "", kana: "[～を]ください", english: "Give me [~], please." },
+    { id: 342, lesson: 3, kanji: "自動販売機", kana: "じどうはんばいき", english: "" },
 
     // 第4课 (Lesson 4)
     { id: 401, lesson: 4, kanji: "起きます", kana: "おきます", english: "get up, wake up" },
@@ -1165,20 +1165,22 @@
             return newArray;
         };
 
+        // V1.03 Fix: 使用本机时间获取 "YYYY-MM-DD"
         const getTodayStr = () => {
             const now = new Date();
-            const utc8Offset = 8 * 60; 
-            const localOffset = now.getTimezoneOffset();
-            const targetTime = new Date(now.getTime() + (utc8Offset + localOffset) * 60000);
-            return targetTime.toISOString().split('T')[0];
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
         };
 
         const getYesterdayStr = () => {
             const now = new Date();
-            const utc8Offset = 8 * 60; 
-            const localOffset = now.getTimezoneOffset();
-            const targetTime = new Date(now.getTime() + (utc8Offset + localOffset) * 60000 - 86400000);
-            return targetTime.toISOString().split('T')[0];
+            now.setDate(now.getDate() - 1);
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
         };
 
         const hasKanji = (word) => word.kanji && word.kanji.length > 0 && word.kanji !== word.kana;
@@ -1243,13 +1245,14 @@
 
             return (
                 <div className="p-6 list-padding-bottom animate-slide-up safe-area-top w-full">
-                    <header className="flex justify-between items-start mb-6 mt-4">
+                    {/* V1.03 Fix: 修复首页头部对齐问题 */}
+                    <header className="flex justify-between items-center mb-6 mt-4">
                         <div>
-                            <h1 className="text-2xl font-black text-slate-800">日语背单词 <span className="text-blue-600">V1.02Beta</span></h1>
+                            <h1 className="text-2xl font-black text-slate-800">日语背单词 <span className="text-blue-600">V1.03Beta</span></h1>
                             <p className="text-slate-400 text-[10px] font-bold tracking-widest uppercase mt-1">By JdohkrX, Gemini3.0</p>
                         </div>
-                        <div className="flex flex-col items-end">
-                            <button onClick={() => setView('stats')} className="bg-orange-50 text-orange-500 px-3 py-1 rounded-full text-xs font-bold border border-orange-100 block mb-1 shadow-sm active:scale-95 transition-transform">
+                        <div className="flex flex-col items-end gap-1">
+                            <button onClick={() => setView('stats')} className="bg-orange-50 text-orange-500 px-3 py-1 rounded-full text-xs font-bold border border-orange-100 shadow-sm active:scale-95 transition-transform flex items-center">
                                 <i className="fa-solid fa-fire mr-1"></i> {stats.streak} 天
                             </button>
                             <span className="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-0.5 rounded">L{settings.rangeStart || 1} - L{settings.rangeEnd || 25}</span>
@@ -1277,9 +1280,10 @@
                         </div>
                     )}
 
+                    {/* V1.03 Fix: 修复导航栏遮挡问题 (z-60, pb-safe) */}
                     {showReviewMenu && (
-                        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 backdrop-blur-sm animate-fade-in" onClick={() => setShowReviewMenu(false)}>
-                            <div className="bg-white w-full max-w-sm rounded-t-[32px] sm:rounded-[32px] p-6 shadow-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
+                        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/30 backdrop-blur-sm animate-fade-in" onClick={() => setShowReviewMenu(false)}>
+                            <div className="bg-white w-full max-w-sm rounded-t-[32px] sm:rounded-[32px] p-6 pb-12 sm:pb-6 shadow-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
                                 <div className="flex justify-between items-center mb-6">
                                     <h3 className="text-xl font-black text-slate-800">选择复习数量</h3>
                                     <button onClick={() => setShowReviewMenu(false)} className="w-8 h-8 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center"><i className="fa-solid fa-xmark"></i></button>
@@ -1290,8 +1294,13 @@
                                             {num} 个单词
                                         </button>
                                     ))}
-                                    <button onClick={() => { onStartReview('all'); setShowReviewMenu(false); }} className="col-span-2 py-4 rounded-2xl bg-indigo-50 text-indigo-600 font-bold border border-indigo-100 hover:bg-indigo-100 transition-all btn-press">
-                                        全部复习 ({tasks.reviewUniqueCount > 0 ? tasks.reviewUniqueCount : '自由模式'})
+                                    <button onClick={() => { onStartReview('all'); setShowReviewMenu(false); }} className="col-span-2 py-4 rounded-2xl bg-indigo-50 text-indigo-600 font-bold border border-indigo-100 hover:bg-indigo-100 transition-all btn-press flex flex-col items-center">
+                                        <span>到期复习 ({tasks.reviewUniqueCount})</span>
+                                        <span className="text-[10px] font-normal opacity-70">仅复习遗忘曲线到期单词</span>
+                                    </button>
+                                    {/* V1.03 Feature: 强制复习所有学习中单词 */}
+                                    <button onClick={() => { onStartReview('force_all_learning'); setShowReviewMenu(false); }} className="col-span-2 py-3 rounded-2xl bg-white text-slate-500 font-bold border border-slate-200 transition-all btn-press text-xs">
+                                        强制复习所有学习中单词 ({Object.keys(stats.mastery).length})
                                     </button>
                                 </div>
                             </div>
@@ -1368,6 +1377,9 @@
             const [stage, setStage] = useState((mode === 'new' && queue.length > 0) ? 'preview' : 'quiz');
             const [sessionQueue] = useState(queue);
 
+            // V1.03 Fix: 错题手动跳转
+            const [waitingForNext, setWaitingForNext] = useState(false);
+
             const uniquePreviewList = useMemo(() => {
                 const seen = new Set();
                 const unique = [];
@@ -1398,16 +1410,16 @@
             }, [task, quizType]);
 
             useEffect(() => {
-                if (stage === 'quiz' && localInputMode === 'quiz-input' && inputRef.current) {
+                if (stage === 'quiz' && localInputMode === 'quiz-input' && inputRef.current && !waitingForNext) {
                     setTimeout(() => {
                         inputRef.current?.focus();
                         inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }, 50);
                 }
-            }, [localInputMode, stage, idx]);
+            }, [localInputMode, stage, idx, waitingForNext]);
 
             useEffect(() => {
-                if (localInputMode !== 'quiz-input' || !settings.autoSubmit || feedback || !task) return;
+                if (localInputMode !== 'quiz-input' || !settings.autoSubmit || feedback || !task || waitingForNext) return;
 
                 const userJp = normalizeJapanese(input);
                 const kana = normalizeJapanese(task.kana);
@@ -1426,7 +1438,7 @@
                 if (isMatch) {
                     checkInputAnswer();
                 }
-            }, [input, settings.autoSubmit, feedback, localInputMode, task]);
+            }, [input, settings.autoSubmit, feedback, localInputMode, task, waitingForNext]);
 
             if (stage === 'finish' || (stage === 'quiz' && !task)) {
                  if (stage !== 'finish') {
@@ -1463,7 +1475,6 @@
                             {uniquePreviewList.map((word, i) => (
                                 <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
                                     <div className="flex items-baseline justify-between mb-1">
-                                        {/* FIX: 应用日文字体 */}
                                         <span className="text-xl font-black text-slate-800 font-jp">{word.kanji || word.kana}</span>
                                         <span className="text-xs font-mono text-slate-300">L{word.lesson}</span>
                                     </div>
@@ -1483,7 +1494,7 @@
             }
 
             const checkInputAnswer = () => {
-                if (feedback) return;
+                if (feedback || waitingForNext) return;
                 const userJp = normalizeJapanese(input);
                 const kana = normalizeJapanese(task.kana);
                 const kanji = normalizeJapanese(task.kanji || '');
@@ -1501,7 +1512,7 @@
             };
 
             const checkOptionAnswer = (selectedWord) => {
-                if (feedback) return;
+                if (feedback || waitingForNext) return;
                 const isCorrect = selectedWord.id === task.id;
                 finalizeResult(isCorrect);
             };
@@ -1509,28 +1520,40 @@
             const finalizeResult = (isCorrect) => {
                 setFeedback(isCorrect ? 'correct' : 'wrong');
                 onComplete(task.id, task.type, isCorrect);
-                const delay = (isCorrect && (quizType === 0 || quizType === 3 || settings.autoSubmit)) ? 800 : 2500;
                 
-                setTimeout(() => {
-                    setFeedback(null);
-                    setInput('');
-                    const nextIdx = idx + 1;
-                    if (nextIdx < sessionQueue.length) {
-                        const nextTask = sessionQueue[nextIdx];
-                        setLocalInputMode(getTaskMode(nextTask));
-                        setIdx(nextIdx);
-                    } else {
-                        setIdx(nextIdx); 
-                        setStage('finish');
-                    }
-                }, delay);
+                // V1.03 Fix: 如果正确，延时跳转；如果错误，等待手动点击
+                if (isCorrect) {
+                    const delay = (quizType === 0 || quizType === 3 || settings.autoSubmit) ? 800 : 2500;
+                    setTimeout(nextTask, delay);
+                } else {
+                    setWaitingForNext(true);
+                }
+            };
+            
+            const nextTask = () => {
+                setFeedback(null);
+                setInput('');
+                setWaitingForNext(false);
+                const nextIdx = idx + 1;
+                if (nextIdx < sessionQueue.length) {
+                    const nextTask = sessionQueue[nextIdx];
+                    setLocalInputMode(getTaskMode(nextTask));
+                    setIdx(nextIdx);
+                } else {
+                    setIdx(nextIdx); 
+                    setStage('finish');
+                }
             };
 
             const handleKeyDown = (e) => { 
                 if (e.key === 'Enter') {
                     if (!e.nativeEvent.isComposing) { 
                         e.preventDefault(); 
-                        checkInputAnswer(); 
+                        if (waitingForNext) {
+                            nextTask();
+                        } else {
+                            checkInputAnswer(); 
+                        }
                     }
                 }
             };
@@ -1555,7 +1578,6 @@
                                     <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
                                         {quizType === 0 ? "请选择正确意思" : "请选择对应汉字"}
                                     </div>
-                                    {/* FIX: 应用日文字体 */}
                                     <div className="text-5xl font-black text-slate-800 font-jp">
                                         {quizType === 3 ? task.kana : (task.kanji || task.kana)}
                                     </div>
@@ -1566,14 +1588,13 @@
                                         <button 
                                             key={`${task.id}-${opt.id}-${i}`}
                                             onClick={() => checkOptionAnswer(opt)}
-                                            disabled={!!feedback}
+                                            disabled={!!feedback || waitingForNext}
                                             className={`p-5 rounded-2xl text-left font-bold text-lg shadow-sm transition-all border-2 
                                                 ${feedback ? 
                                                     (opt.id === task.id ? 'bg-green-100 border-green-400 text-green-800' : (feedback === 'wrong' && 'border-transparent text-slate-300 opacity-50')) : 
                                                     'bg-white border-transparent text-slate-700 active:scale-95 active:bg-blue-50 hover:border-blue-200'
                                                 }`}
                                         >
-                                            {/* FIX: 选项中如果是日文，应用字体 */}
                                             <span className={quizType === 3 ? 'font-jp' : ''}>{quizType === 3 ? opt.kanji : opt.english}</span>
                                         </button>
                                     ))}
@@ -1582,6 +1603,12 @@
                                     <div className="mt-4 p-4 bg-red-100 text-red-600 rounded-2xl text-center font-bold animate-pulse">
                                         正确答案: <span className="font-jp">{quizType === 3 ? task.kanji : task.english}</span>
                                     </div>
+                                )}
+                                {/* V1.03 Fix: 手动下一题按钮 */}
+                                {waitingForNext && (
+                                    <button onClick={nextTask} className="mt-4 w-full bg-slate-800 text-white py-4 rounded-2xl font-black text-lg shadow-lg btn-press animate-slide-up">
+                                        下一题 <i className="fa-solid fa-arrow-right ml-2"></i>
+                                    </button>
                                 )}
                             </div>
                         ) : (
@@ -1594,7 +1621,7 @@
                                         {quizType === 1 && <div className="text-3xl font-black text-blue-600 leading-tight px-2">{task.english}</div>}
                                         {quizType === 2 && <div className="text-6xl font-black text-slate-800 font-jp">{task.kanji}</div>}
                                     </div>
-                                    <input ref={inputRef} autoFocus disabled={!!feedback} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck="false" className="w-full bg-transparent border-b-4 border-slate-200 focus:border-blue-500 text-center text-3xl font-black py-4 outline-none disabled:opacity-50 disabled:border-transparent transition-all placeholder:text-slate-300 font-jp" placeholder="Romaji OK..." />
+                                    <input ref={inputRef} autoFocus disabled={!!feedback || waitingForNext} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck="false" className="w-full bg-transparent border-b-4 border-slate-200 focus:border-blue-500 text-center text-3xl font-black py-4 outline-none disabled:opacity-50 disabled:border-transparent transition-all placeholder:text-slate-300 font-jp" placeholder="Romaji OK..." />
                                     {feedback && (
                                         <div className={`mt-8 text-center animate-slide-up w-full bg-white/50 p-4 rounded-2xl backdrop-blur-sm`}>
                                             <div className={`text-2xl font-black mb-2 ${feedback === 'correct' ? 'text-green-600' : 'text-red-500'}`}>{feedback === 'correct' ? 'CORRECT!' : 'OOPS!'}</div>
@@ -1603,6 +1630,10 @@
                                     )}
                                 </div>
                                 {!feedback && <button onClick={checkInputAnswer} className="w-full mt-4 bg-blue-600 text-white py-4 rounded-2xl font-black text-lg shadow-lg active:bg-blue-700 btn-press flex items-center justify-center gap-2">提交答案 <i className="fa-solid fa-check"></i></button>}
+                                {/* V1.03 Fix: 手动下一题按钮 */}
+                                {waitingForNext && (
+                                    <button onClick={nextTask} className="w-full mt-4 bg-slate-800 text-white py-4 rounded-2xl font-black text-lg shadow-lg active:bg-slate-900 btn-press flex items-center justify-center gap-2">下一题 <i className="fa-solid fa-arrow-right"></i></button>
+                                )}
                             </div>
                         )}
                     </div>
@@ -1675,7 +1706,6 @@
                             return (
                                 <div key={word.id} className="bg-white p-5 rounded-2xl border border-slate-100 flex flex-col active:bg-slate-50 transition-colors shadow-sm w-full">
                                     <div className="flex justify-between items-start mb-2">
-                                        {/* FIX: 应用日文字体 */}
                                         <div className="text-2xl font-black text-slate-800 font-jp">{word.kanji || word.kana}</div>
                                         <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-1 rounded font-bold">L{word.lesson}</span>
                                     </div>
@@ -1703,7 +1733,7 @@
             };
 
             const handleExport = () => {
-                const data = { stats, settings, meta: { version: 'V1.02Beta', date: new Date().toISOString() } };
+                const data = { stats, settings, meta: { version: 'V1.03Beta', date: new Date().toISOString() } };
                 const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement("a");
@@ -1787,7 +1817,7 @@
                             </div>
                             <div className="text-right">
                                 <div className="font-bold text-slate-800 text-lg">{todayDate.getMonth() + 1}月</div>
-                                <div className="text-xs text-slate-300 font-bold">UTC+8</div>
+                                <div className="text-xs text-slate-300 font-bold">本机时间</div>
                             </div>
                         </div>
                         <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:'6px', width:'100%'}}>
@@ -1860,6 +1890,7 @@
                 let reviewQueue = [];
                 let masteredCount = 0;
                 let learnedWordIds = new Set();
+                let allLearningQueue = []; // V1.03 Feature: 存储所有学习中的单词任务
 
                 Object.keys(stats.mastery).forEach(wid => {
                     const word = FULL_VOCAB.find(w => w.id == wid);
@@ -1870,7 +1901,10 @@
                     types.forEach(type => {
                         const tm = m[type];
                         if (tm) {
+                            // 正常的复习逻辑：到期才复习
                             if (tm.level < 7 && tm.nextReview <= now) reviewQueue.push({ ...word, type });
+                            // 强制复习逻辑：所有未完全掌握的都加入
+                            if (tm.level < 7) allLearningQueue.push({ ...word, type });
                             if (tm.level < 7) isWordMastered = false;
                         } else {
                             isWordMastered = false; 
@@ -1906,6 +1940,7 @@
 
                 return { 
                     reviewQueue: reviewQueue, 
+                    allLearningQueue: allLearningQueue, // V1.03 Feature
                     newQueue: finalNewQueue, 
                     mistakeQueue: shuffle(mistakeQueue), 
                     mistakeCount: mistakeIds.size,
@@ -1930,19 +1965,27 @@
                 setTempGoalAddon(prev => prev + 10);
             };
 
-            const handleStartReview = (countStr) => {
-                if (tasks.reviewQueue.length === 0) {
-                    alert("暂无待复习单词！");
-                    return;
-                }
-                
-                let queue = tasks.reviewQueue;
-                
-                if (countStr !== 'all') {
-                    const limit = parseInt(countStr);
-                    const allIds = [...new Set(queue.map(t => t.id))];
-                    const targetIds = new Set(allIds.slice(0, limit));
-                    queue = queue.filter(t => targetIds.has(t.id));
+            const handleStartReview = (modeParam) => {
+                // V1.03 Fix: 支持强制复习模式
+                let queue = [];
+                if (modeParam === 'force_all_learning') {
+                     if (tasks.allLearningQueue.length === 0) {
+                        alert("暂无学习中的单词！");
+                        return;
+                    }
+                    queue = tasks.allLearningQueue;
+                } else {
+                    if (tasks.reviewQueue.length === 0) {
+                        alert("暂无待复习单词！");
+                        return;
+                    }
+                    queue = tasks.reviewQueue;
+                    if (modeParam !== 'all') {
+                        const limit = parseInt(modeParam);
+                        const allIds = [...new Set(queue.map(t => t.id))];
+                        const targetIds = new Set(allIds.slice(0, limit));
+                        queue = queue.filter(t => targetIds.has(t.id));
+                    }
                 }
                 
                 setActiveQueue(shuffle(queue));
