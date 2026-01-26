@@ -19,7 +19,8 @@ A Japanese-words-learning program based on textbook series, "Minna no Nihongo", 
   5. 增加了复习全部单词的功能。
   6. 修正了部分词库错误。
   7. Beta版本，部分功能未经测试，有待修复与优化。
- <br>
+  <br>
+
 - **V1.02Beta**:
   1. 修复了首页的打卡天数显示错位与字体错误的bug。
   2. 修复了选择题选择选项后，下一题同一位置的选项仍显示选中后状态的bug。
@@ -31,7 +32,8 @@ A Japanese-words-learning program based on textbook series, "Minna no Nihongo", 
   8. 修复了在需要输入的题目中，标点符号也被纳入到判断对错的范围之中的bug。
   9. 修正了部分词库错误。
   10. Beta版本，部分功能未经测试，有待修复与优化。
-<br>
+  <br>
+  
 - **V1.01Beta**:
   1. 优化了日译英测试，选项里只出现对应词性的混淆选项。<br>
     Optimized the Japanese-English translation test, and only confusion options corresponding to parts of speech appear in the options.
@@ -61,7 +63,8 @@ A Japanese-words-learning program based on textbook series, "Minna no Nihongo", 
     After the day's goal is achieved, you can choose to continue learning.
   14. Beta版本，部分功能未经测试，有待修复与优化。<br>
     Beta version, some functions have not been tested and need to be repaired and optimized.
-<br>
+  <br>
+
 - **V1.0Beta**:
   1. 基于“英语版初级I第2版”L1-25的课程分类词库（包括汉字、平假名、英文释义）。<br>
     Based on the course classification lexicon of "English Edition Elementary I 2nd Edition" L1-25 (including kanji, hiragana, and English definitions).
