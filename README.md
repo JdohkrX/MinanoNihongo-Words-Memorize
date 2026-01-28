@@ -1,12 +1,12 @@
 # MinanoNihongo-Words-Memorize
 A Japanese-words-learning program based on textbook series, "Minna no Nihongo", coded by Google Gemini 3.0.
 
-# 日语背单词 Pro (Minna no Nihongo Vocabulary App)
+# 日语背单词 (Minna no Nihongo Vocabulary App)
 
 基于《大家的日语》词汇构建的渐进式 Web 应用 (PWA)，由Gemini3.0编码制作。
 
-## 📱 如何使用
-1. 访问在线地址：https://jdohkrx.github.io/MinanoNihongo-Words-Memorize/
+## 📱 如何使用 How to Use
+1. 访问在线地址 Online Website：https://jdohkrx.github.io/MinanoNihongo-Words-Memorize/
 2. **iOS**: 在 Safari 中点击“分享” -> “添加到主屏幕”。
 3. **Android**: 在 Chrome 中点击菜单 -> “安装应用”或“添加到主屏幕”。
 
@@ -19,6 +19,7 @@ A Japanese-words-learning program based on textbook series, "Minna no Nihongo", 
   5. 增加了复习全部单词的功能。
   6. 修正了部分词库错误。
   7. Beta版本，部分功能未经测试，有待修复与优化。
+     Beta version, some functions have not been tested and need to be repaired and optimized.
   <br>
 
 - **V1.02Beta**:
@@ -32,6 +33,7 @@ A Japanese-words-learning program based on textbook series, "Minna no Nihongo", 
   8. 修复了在需要输入的题目中，标点符号也被纳入到判断对错的范围之中的bug。
   9. 修正了部分词库错误。
   10. Beta版本，部分功能未经测试，有待修复与优化。
+      Beta version, some functions have not been tested and need to be repaired and optimized.
   <br>
   
 - **V1.01Beta**:
