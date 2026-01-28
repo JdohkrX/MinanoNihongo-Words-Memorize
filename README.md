@@ -18,7 +18,7 @@ A Japanese-words-learning program based on textbook series, "Minna no Nihongo", 
   4. 修复了首页打卡天数显示错位的问题。
   5. 增加了复习全部单词的功能。
   6. 修正了部分词库错误。
-  7. Beta版本，部分功能未经测试，有待修复与优化。
+  7. Beta版本，部分功能未经测试，有待修复与优化。<br>
      Beta version, some functions have not been tested and need to be repaired and optimized.
   <br>
 
@@ -32,7 +32,7 @@ A Japanese-words-learning program based on textbook series, "Minna no Nihongo", 
   7. 可选择复习单词数量及范围，从复习列表中随机抽取，当天复习任务完成后可以选择再次复习。
   8. 修复了在需要输入的题目中，标点符号也被纳入到判断对错的范围之中的bug。
   9. 修正了部分词库错误。
-  10. Beta版本，部分功能未经测试，有待修复与优化。
+  10. Beta版本，部分功能未经测试，有待修复与优化。<br>
       Beta version, some functions have not been tested and need to be repaired and optimized.
   <br>
   
